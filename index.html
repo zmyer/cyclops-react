@@ -136,6 +136,26 @@
 		   <li><a href="https://medium.com/@johnmcclean/reactive-programming-with-java-8-and-simple-react-the-tutorial-3634f512eeb1#.1tz1b2z2m">Reactive programming with simple-react : The tutorial</a></li>
            <li><a href="http://www.javadoc.io/doc/com.aol.simplereact/cyclops-react/">javadoc</a></li>
            </ul>
+           <!--p class="lead pull-left"> Features include:
+               <ul>
+                   <li>Compatible extensions to JDK interfaces (Collections, Streams, Functions)</li>
+                   <li>Built with jOOλ, reactive-streams, Agrona and pCollections</li>
+                   <li>Extensions for efficient JDK compatible persistent collections (pCollections)</li>
+                   <li>Single-threaded asynchronous streaming</li>
+                   <li>Scheduling of data emission</li>
+                   <li>Powerful extended type hierarchy for aggregrations (Collections & Streams) and single values</li>
+                   <li>FutureStreams for managing aggregates for Future Tasks (e.g. for multi-threaded execution of large numbers of I/O tasks)</li>
+                   <li>Powerful functional-style control structures, implemented in Java friendly manner (Maybe, Eval, FutureW, Xor, Ior, Try, AnyM, structural & guard based pattern matching, for-comprehensions)</li>
+                   <li>Execute functions between wrapped values (Optional / CompletableFutre etc) without tedious unwrapping (Java friendly Applicative support).</li>
+                   <li>Java friendly abstractions for wrapping any Monad type (Stream, CompletableFuture, Optional, cyclops-react types and types from other Java projects too). AnyM and it's two subtypes AnyMSeq for aggregates (Steam, List etc) and AnyMValue for Values</li>
+                   <li>Monad Transformers - for manipulating nesting monadic types (e.g. Optionals within a Stream as if it were just an Optional)</li>
+                   <li>Applicatives - apply functions across wrapped types (e.g. Optional / Maybe / Xor) without unwrapping & aggregate without terminate on failure</li>
+                   <li>Structural pattern matching & pattern matching via Guards (see Matchable and Matchables)</li>
+                   <li>Full strength for comprehensions / generators (reference elements from other generators)</li>
+                   <li>Tight integration with reactive-streams : collections, streams and datatypes are publishers & can be generated via subscribers</li>
+                   <li>Very Extensible & integration with other projects via cyclops-integration modules.</li>
+               </ul>
+           </p-->
 	   </div>
 		<div class="pull-right">
 		<script src="https://gist.github.com/johnmcclean-aol/455690f21b1effd11a02.js"></script>
@@ -145,31 +165,41 @@
         <hr class="featurette-divider">
         <!-- Second Featurette -->
         <div class="featurette" id="services">
-			<iframe class="pull-right" width="560" height="315" src="https://www.youtube.com/embed/7pztJ04ID4w" frameborder="0" allowfullscreen></iframe>
+			
 			
             <h2 class="featurette-heading">build <span class="text-muted">robust</span>,
                performant & scalable <span class="text-muted">asynchronous</span> systems
             </h2>
-            <p class="lead"> Features include:
-                <ul>
-                    <li>Compatible extensions to JDK interfaces (Collections, Streams, Functions)</li>
-                    <li>Built with jOOλ, reactive-streams, Agrona and pCollections</li>
-                    <li>Extensions for efficient JDK compatible persistent collections (pCollections)</li>
-                    <li>Single-threaded asynchronous streaming</li>
-                    <li>Scheduling of data emission</li>
-                    <li>Powerful extended type hierarchy for aggregrations (Collections & Streams) and single values</li>
-                    <li>FutureStreams for managing aggregates for Future Tasks (e.g. for multi-threaded execution of large numbers of I/O tasks)</li>
-                    <li>Powerful functional-style control structures, implemented in Java friendly manner (Maybe, Eval, FutureW, Xor, Ior, Try, AnyM, structural & guard based pattern matching, for-comprehensions)</li>
-                    <li>Execute functions between wrapped values (Optional / CompletableFutre etc) without tedious unwrapping (Java friendly Applicative support).</li>
-                    <li>Java friendly abstractions for wrapping any Monad type (Stream, CompletableFuture, Optional, cyclops-react types and types from other Java projects too). AnyM and it's two subtypes AnyMSeq for aggregates (Steam, List etc) and AnyMValue for Values</li>
-                    <li>Monad Transformers - for manipulating nesting monadic types (e.g. Optionals within a Stream as if it were just an Optional)</li>
-                    <li>Applicatives - apply functions across wrapped types (e.g. Optional / Maybe / Xor) without unwrapping & aggregate without terminate on failure</li>
-                    <li>Structural pattern matching & pattern matching via Guards (see Matchable and Matchables)</li>
-                    <li>Full strength for comprehensions / generators (reference elements from other generators)</li>
-                    <li>Tight integration with reactive-streams : collections, streams and datatypes are publishers & can be generated via subscribers</li>
-                    <li>Very Extensible & integration with other projects via cyclops-integration modules.</li>
-                </ul>
-            </p>
+			<div>
+			 <iframe class="pull-right" width="560" height="315" src="https://www.youtube.com/embed/7pztJ04ID4w" frameborder="0" allowfullscreen></iframe>
+           <h4 class="lead">Case study 1 : Large scale forecasting system</h4>
+		   <p>AOL needed to process billions of advertising records to provide accurate and fast forecasts for online ad campaigns, cyclops-react was used to simplify the development of highly concurrent, distributed components</p>
+		   <p>Watch the related screencast 'Reactive Programming at Scale' in which Paul Downey a Technical Director of engineering at AOL Platforms, and John McClean author of cyclops-react explain how cyclops-react was used in building the indexing component of AOL Platforms demand side forecasting platform.</p>
+			<br/>
+		</div>
+		<div>
+           <h4 class="lead">Case study 2 : Faster loading of files </h4>
+		   <p>Users have found significant performance boosts by adopting Future Streams for loading files from disk </p>
+		   <ul>
+		   <li><a href='https://github.com/aol/cyclops-react/issues/67'>A significant performance boost over JDK Parallel Streams</a></li>
+		   <li><a href='https://github.com/aol/cyclops-react/issues/179'>Convert hundreds of Excel files concurrently</a></li>
+	   </ul>
+		   </p>
+	   </div>
+	   <div>
+		    <h4 class="lead">Case study 3 : Implementing Haskell-based algorithms in Java </h4>
+		   <p>Sebastian Millies wanted to implement an algorithm for deterministic and non-deterministic finite state machines as describe by Mike MacHenry in Java. cyclops-react provided abstractions to make it possible to convert a very high-level Haskell algorithm to plain old Java.</p>
+		    <ul>
+			  <li> <a href='http://sebastian-millies.blogspot.de/2015/11/deterministic-and-non-deterministic.html'>Deterministic and Non-Deterministic Finite State Machines with Cyclops</a></li>
+		  </ul>
+		  <iframe class="pull-right" width="420" height="315" src="https://www.youtube.com/embed/YgzvpMbxiRo" frameborder="0" allowfullscreen></iframe>
+		  
+		    <h4 class="lead" class="pull-left">Case study 4 : Converting advanced Scala to Java with cyclops-react and Javaslang</h4>
+		   <p>A user wanted to program in Scala style as described in <a href='http://danielwestheide.com/blog/2013/01/09/the-neophytes-guide-to-scala-part-8-welcome-to-the-future.html'>The Neophytes Guide to Scala</a> using Javaslang and cyclops-react, by leveraging the cyclops-Javaslang module and powerful cyclops-react for-comprehensions the user was able convert an advanced Scala style of programming to easy to understand Java as is.</p>
+		    <ul>
+			  <li> <a href='https://medium.com/@johnmcclean/neophytes-guide-to-java-8-welcome-to-the-future-83f432ce82a9#.fi8yliqc8'>Neophytes guide to Java 8 : Welcome to the Future</a></li>
+		  </ul>
+		  
         </div>
 
 
