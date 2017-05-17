@@ -3,7 +3,7 @@ package com.aol.cyclops2.data.collections.extensions.lazy.immutable;
 
 import cyclops.Reducers;
 import cyclops.collections.SetX;
-import cyclops.collections.immutable.SetX;
+
 import cyclops.function.Monoid;
 import cyclops.function.Reducer;
 import cyclops.stream.ReactiveSeq;
@@ -72,12 +72,12 @@ public class LazyPSetX2<T> extends AbstractLazyPersistentCollection2<T,PSet<T>> 
 
     @Override
     public SetX<T> persistent() {
-        return null;
+        return this;
     }
 
     @Override
     public SetX<T> persistent(Reducer<? extends Set<T>> reducer) {
-        return null;
+        return new LazyPSetX2<T>(getList(),getSeq().get(),(Reducer)reducer);
     }
 
     //@Override
@@ -108,13 +108,13 @@ public class LazyPSetX2<T> extends AbstractLazyPersistentCollection2<T,PSet<T>> 
 
 
     //  @Override
-    private <X> LazyPSetX2<X> fromStream(Stream<X> stream) {
+    public <X> SetX<X> fromStream(Stream<X> stream) {
 
         return new LazyPSetX2<X>((PSet)getList(),ReactiveSeq.fromStream(stream));
     }
 
     @Override
-    public <T1> LazyPSetX2<T1> from(Collection<T1> c) {
+    public <T1> SetX<T1> from(Collection<T1> c) {
         if(c instanceof PSet)
             return new LazyPSetX2<T1>((PSet)c,null);
         return fromStream(ReactiveSeq.fromIterable(c));
@@ -152,14 +152,14 @@ public class LazyPSetX2<T> extends AbstractLazyPersistentCollection2<T,PSet<T>> 
     
 
     @Override
-    public <U> LazyPSetX2<U> unitIterator(Iterator<U> it) {
+    public <U> SetX<U> unitIterator(Iterator<U> it) {
         return fromStream(ReactiveSeq.fromIterator(it));
     }
 
 
 
     @Override
-    public <R> LazyPSetX2<R> unit(Collection<R> col) {
+    public <R> SetX<R> unit(Collection<R> col) {
         return from(col);
     }
 

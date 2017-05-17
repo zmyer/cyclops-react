@@ -1,9 +1,7 @@
 package cyclops.collections;
 
-import com.aol.cyclops2.data.collections.extensions.FluentCollectionX;
 import com.aol.cyclops2.data.collections.extensions.lazy.LazySetX;
-import com.aol.cyclops2.data.collections.extensions.lazy.immutable.LazyPSetX2;
-import cyclops.Converters;
+import com.aol.cyclops2.data.collections.extensions.standard.MutableCollectionX;
 import cyclops.Reducers;
 import cyclops.Streams;
 import cyclops.collections.immutable.PVectorX;
@@ -34,15 +32,14 @@ import java.util.stream.Stream;
 import static cyclops.stream.ReactiveSeq.ofLongs;
 
 
-public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmptySwitch<T, Set<T>> {
-
+public interface SetX<T> extends To<SetX<T>>,Set<T>, MutableCollectionX<T>, OnEmptySwitch<T, Set<T>> {
     public static void main(String[] args){
 
-   //     SetX<Integer> immutable = SetX.of(1,2,3)
-   //                                   .immutable();
+        //     SetX<Integer> immutable = SetX.of(1,2,3)
+        //                                   .immutable();
 
         SetX<Integer> persistent = SetX.of(1,2,3)
-                                       .persistent();
+                .persistent();
 
 
         SetX<Integer> persistentSet = persistentSet(1,2,3);
@@ -50,7 +47,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
         SetX<Integer> mutableSet = persistentSet(1,2,3).mutable();
 
         SetX<Integer> pset = SetX.of(1,2,3)
-                                 .persistent(Reducers.toPSet());
+                                  .persistent(Reducers.toPSet());
 
         SetX<Long> longs = persistentSet(ofLongs(10l,20l));
 
@@ -66,7 +63,15 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
         return new LazySetX<T>(null,it,
                 defaultCollector());
     }
+    public static <T> SetX<T> mutableSet(final ReactiveSeq<T> it) {
 
+        return new LazySetX<T>(null,it,
+                defaultCollector());
+    }
+
+    default SetX<T> mutable(Collector<T, ?, Set<T>> collector){
+        return this.withCollector(collector);
+    }
     default SetX<T> mutable(){
         return this.withCollector(Collectors.toSet());
     }
@@ -85,7 +90,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
      */
     public static SetX<Integer> range(final int start, final int end) {
         return ReactiveSeq.range(start, end)
-                          .toSetX();
+                .toSetX();
     }
 
     /**
@@ -99,7 +104,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
      */
     public static SetX<Long> rangeLong(final long start, final long end) {
         return ReactiveSeq.rangeLong(start, end)
-                          .toSetX();
+                .toSetX();
     }
 
     /**
@@ -119,7 +124,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
      */
     static <U, T> SetX<T> unfold(final U seed, final Function<? super U, Optional<Tuple2<T, U>>> unfolder) {
         return ReactiveSeq.unfold(seed, unfolder)
-                          .toSetX();
+                .toSetX();
     }
 
     /**
@@ -132,8 +137,8 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
     public static <T> SetX<T> generate(final long limit, final Supplier<T> s) {
 
         return ReactiveSeq.generate(s)
-                          .limit(limit)
-                          .toSetX();
+                .limit(limit)
+                .toSetX();
     }
 
     /**
@@ -146,8 +151,8 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
      */
     public static <T> SetX<T> iterate(final long limit, final T seed, final UnaryOperator<T> f) {
         return ReactiveSeq.iterate(seed, f)
-                          .limit(limit)
-                          .toSetX();
+                .limit(limit)
+                .toSetX();
 
     }
 
@@ -174,7 +179,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
         return fromIterable(ReactiveSeq.of(values));
     }
     @SafeVarargs
-    public static <T> SetX<T> immutableSet(final T... values) {
+    public static <T> SetX<T> mutableSet(final T... values) {
 
         return fromIterable(ReactiveSeq.of(values));
     }
@@ -199,7 +204,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
      */
     public static <T> SetX<T> fromPublisher(final Publisher<? extends T> publisher) {
         return Spouts.from((Publisher<T>) publisher)
-                          .toSetX();
+                .toSetX();
     }
 
     public static <T> SetX<T> fromIterable(final Iterable<T> it) {
@@ -207,10 +212,10 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
             return (SetX) it;
         if (it instanceof Set)
             return new LazySetX<T>(
-                                   (Set) it, defaultCollector());
+                    (Set) it, defaultCollector());
         return new LazySetX<T>(null,
-                                ReactiveSeq.fromIterable(it),
-                                          defaultCollector());
+                ReactiveSeq.fromIterable(it),
+                defaultCollector());
     }
 
     public static <T> SetX<T> fromIterable(final Collector<T, ?, Set<T>> collector, final Iterable<T> it) {
@@ -218,19 +223,27 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
             return ((SetX) it).withCollector(collector);
         if (it instanceof Set)
             return new LazySetX<T>(
-                                   (Set) it, collector);
+                    (Set) it, collector);
         return new LazySetX<T>(null,
-                                ReactiveSeq.fromIterable(it),
-                                collector);
+                ReactiveSeq.fromIterable(it),
+                collector);
     }
 
     @Override
-    SetX<T> materialize();
+    default SetX<T> materialize() {
+        return (SetX<T>)MutableCollectionX.super.materialize();
+    }
 
     @Override
-    SetX<T> take(final long num) ;
+    default SetX<T> take(final long num) {
+
+        return (SetX<T>) MutableCollectionX.super.limit(num);
+    }
     @Override
-    SetX<T> drop(final long num) ;
+    default SetX<T> drop(final long num) {
+
+        return (SetX<T>) MutableCollectionX.super.skip(num);
+    }
 
     /* (non-Javadoc)
      * @see com.aol.cyclops2.data.collections.extensions.CollectionX#forEach4(java.util.function.Function, java.util.function.BiFunction, com.aol.cyclops2.util.function.TriFunction, com.aol.cyclops2.util.function.QuadFunction)
@@ -241,7 +254,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
             Fn3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
             Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
 
-        return (SetX)FluentCollectionX.super.forEach4(stream1, stream2, stream3, yieldingFunction);
+        return (SetX)MutableCollectionX.super.forEach4(stream1, stream2, stream3, yieldingFunction);
     }
 
     /* (non-Javadoc)
@@ -254,7 +267,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
             Fn4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
             Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
 
-        return (SetX)FluentCollectionX.super.forEach4(stream1, stream2, stream3, filterFunction, yieldingFunction);
+        return (SetX)MutableCollectionX.super.forEach4(stream1, stream2, stream3, filterFunction, yieldingFunction);
     }
 
     /* (non-Javadoc)
@@ -265,7 +278,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
             BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
             Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
 
-        return (SetX)FluentCollectionX.super.forEach3(stream1, stream2, yieldingFunction);
+        return (SetX)MutableCollectionX.super.forEach3(stream1, stream2, yieldingFunction);
     }
 
     /* (non-Javadoc)
@@ -277,7 +290,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
             Fn3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
             Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
 
-        return (SetX)FluentCollectionX.super.forEach3(stream1, stream2, filterFunction, yieldingFunction);
+        return (SetX)MutableCollectionX.super.forEach3(stream1, stream2, filterFunction, yieldingFunction);
     }
 
     /* (non-Javadoc)
@@ -287,7 +300,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
     default <R1, R> SetX<R> forEach2(Function<? super T, ? extends Iterable<R1>> stream1,
             BiFunction<? super T, ? super R1, ? extends R> yieldingFunction) {
 
-        return (SetX)FluentCollectionX.super.forEach2(stream1, yieldingFunction);
+        return (SetX)MutableCollectionX.super.forEach2(stream1, yieldingFunction);
     }
 
     /* (non-Javadoc)
@@ -298,7 +311,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
             BiFunction<? super T, ? super R1, Boolean> filterFunction,
             BiFunction<? super T, ? super R1, ? extends R> yieldingFunction) {
 
-        return (SetX)FluentCollectionX.super.forEach2(stream1, filterFunction, yieldingFunction);
+        return (SetX)MutableCollectionX.super.forEach2(stream1, filterFunction, yieldingFunction);
     }
 
     SetX<T> withCollector(Collector<T, ?, Set<T>> collector);
@@ -344,9 +357,13 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
      * @return Combined / Partially Reduced SetX
      */
     @Override
-    SetX<T> combine(final BiPredicate<? super T, ? super T> predicate, final BinaryOperator<T> op) ;
+    default SetX<T> combine(final BiPredicate<? super T, ? super T> predicate, final BinaryOperator<T> op) {
+        return (SetX<T>) MutableCollectionX.super.combine(predicate, op);
+    }
     @Override
-    SetX<T> combine(final Monoid<T> op, final BiPredicate<? super T, ? super T> predicate);
+    default SetX<T> combine(final Monoid<T> op, final BiPredicate<? super T, ? super T> predicate) {
+        return (SetX<T>)MutableCollectionX.super.combine(op,predicate);
+    }
 
     /* (non-Javadoc)
      * @see com.aol.cyclops2.sequence.traits.ConvertableSequence#toListX()
@@ -384,132 +401,202 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
 
     public <T> Collector<T, ?, Set<T>> getCollector();
 
-
+    @Override
     default <X> SetX<X> fromStream(final Stream<X> stream) {
         return new LazySetX<>(
                               stream.collect(getCollector()), getCollector());
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#reverse()
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#reverse()
      */
     @Override
-    SetX<T> reverse();
+    default SetX<T> reverse() {
+        return (SetX<T>) MutableCollectionX.super.reverse();
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#filter(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#filter(java.util.function.Predicate)
      */
     @Override
-    SetX<T> filter(final Predicate<? super T> pred);
+    default SetX<T> filter(final Predicate<? super T> pred) {
+
+        return (SetX<T>) MutableCollectionX.super.filter(pred);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#map(java.util.function.Function)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#map(java.util.function.Function)
      */
     @Override
-    <R> SetX<R> map(final Function<? super T, ? extends R> mapper);
+    default <R> SetX<R> map(final Function<? super T, ? extends R> mapper) {
+
+        return (SetX<R>) MutableCollectionX.super.<R> map(mapper);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#flatMap(java.util.function.Function)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#flatMap(java.util.function.Function)
      */
     @Override
-    <R> SetX<R> flatMap(final Function<? super T, ? extends Iterable<? extends R>> mapper);
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#limit(long)
-     */
-    @Override
-    SetX<T> limit(final long num);
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#skip(long)
-     */
-    @Override
-    SetX<T> skip(final long num);
+    default <R> SetX<R> flatMap(final Function<? super T, ? extends Iterable<? extends R>> mapper) {
 
-    @Override
-    SetX<T> takeRight(final int num);
-
-    @Override
-     SetX<T> dropRight(final int num);
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#takeWhile(java.util.function.Predicate)
-     */
-    @Override
-    SetX<T> takeWhile(final Predicate<? super T> p);
+        return (SetX<R>) MutableCollectionX.super.<R> flatMap(mapper);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#dropWhile(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#limit(long)
      */
     @Override
-    default SetX<T> dropWhile(final Predicate<? super T> p);
+    default SetX<T> limit(final long num) {
+        return (SetX<T>) MutableCollectionX.super.limit(num);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#takeUntil(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#skip(long)
      */
     @Override
-    default SetX<T> takeUntil(final Predicate<? super T> p) ;
+    default SetX<T> skip(final long num) {
+
+        return (SetX<T>) MutableCollectionX.super.skip(num);
+    }
+
+    @Override
+    default SetX<T> takeRight(final int num) {
+        return (SetX<T>) MutableCollectionX.super.takeRight(num);
+    }
+
+    @Override
+    default SetX<T> dropRight(final int num) {
+        return (SetX<T>) MutableCollectionX.super.dropRight(num);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#dropUntil(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#takeWhile(java.util.function.Predicate)
      */
     @Override
-    default SetX<T> dropUntil(final Predicate<? super T> p) ;
+    default SetX<T> takeWhile(final Predicate<? super T> p) {
+
+        return (SetX<T>) MutableCollectionX.super.takeWhile(p);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#trampoline(java.util.function.Function)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#dropWhile(java.util.function.Predicate)
      */
     @Override
-    default <R> SetX<R> trampoline(final Function<? super T, ? extends Trampoline<? extends R>> mapper) ;
+    default SetX<T> dropWhile(final Predicate<? super T> p) {
+
+        return (SetX<T>) MutableCollectionX.super.dropWhile(p);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#slice(long, long)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#takeUntil(java.util.function.Predicate)
      */
     @Override
-    default SetX<T> slice(final long from, final long to);
+    default SetX<T> takeUntil(final Predicate<? super T> p) {
+
+        return (SetX<T>) MutableCollectionX.super.takeUntil(p);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#sorted(java.util.function.Function)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#dropUntil(java.util.function.Predicate)
      */
     @Override
-    default <U extends Comparable<? super U>> SetX<T> sorted(final Function<? super T, ? extends U> function);
+    default SetX<T> dropUntil(final Predicate<? super T> p) {
 
-    @Override
-    default SetX<ListX<T>> grouped(final int groupSize) ;
-
-    @Override
-    default <K, A, D> SetX<Tuple2<K, D>> grouped(final Function<? super T, ? extends K> classifier, final Collector<? super T, A, D> downstream) ;
-
-    @Override
-    default <K> SetX<Tuple2<K, ReactiveSeq<T>>> grouped(final Function<? super T, ? extends K> classifier);
-
-    @Override
-    default <U> SetX<Tuple2<T, U>> zip(final Iterable<? extends U> other) ;
+        return (SetX<T>) MutableCollectionX.super.dropUntil(p);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#zip(java.lang.Iterable, java.util.function.BiFunction)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#trampoline(java.util.function.Function)
      */
     @Override
-    default <U, R> SetX<R> zip(final Iterable<? extends U> other, final BiFunction<? super T, ? super U, ? extends R> zipper) ;
+    default <R> SetX<R> trampoline(final Function<? super T, ? extends Trampoline<? extends R>> mapper) {
+
+        return (SetX<R>) MutableCollectionX.super.<R> trampoline(mapper);
+    }
+
+    /* (non-Javadoc)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#slice(long, long)
+     */
+    @Override
+    default SetX<T> slice(final long from, final long to) {
+
+        return (SetX<T>) MutableCollectionX.super.slice(from, to);
+    }
+
+    /* (non-Javadoc)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#sorted(java.util.function.Function)
+     */
+    @Override
+    default <U extends Comparable<? super U>> SetX<T> sorted(final Function<? super T, ? extends U> function) {
+
+        return (SetX<T>) MutableCollectionX.super.sorted(function);
+    }
 
     @Override
-    default <U, R> SetX<R> zipS(final Stream<? extends U> other, final BiFunction<? super T, ? super U, ? extends R> zipper);
+    default SetX<ListX<T>> grouped(final int groupSize) {
+        return (SetX) MutableCollectionX.super.grouped(groupSize);
+    }
+
+    @Override
+    default <K, A, D> SetX<Tuple2<K, D>> grouped(final Function<? super T, ? extends K> classifier, final Collector<? super T, A, D> downstream) {
+        return (SetX) MutableCollectionX.super.grouped(classifier, downstream);
+    }
+
+    @Override
+    default <K> SetX<Tuple2<K, ReactiveSeq<T>>> grouped(final Function<? super T, ? extends K> classifier) {
+        return (SetX) MutableCollectionX.super.grouped(classifier);
+    }
+
+    @Override
+    default <U> SetX<Tuple2<T, U>> zip(final Iterable<? extends U> other) {
+        return (SetX) MutableCollectionX.super.zip(other);
+    }
+
+    /* (non-Javadoc)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#zip(java.lang.Iterable, java.util.function.BiFunction)
+     */
+    @Override
+    default <U, R> SetX<R> zip(final Iterable<? extends U> other, final BiFunction<? super T, ? super U, ? extends R> zipper) {
+
+        return (SetX<R>) MutableCollectionX.super.zip(other, zipper);
+    }
+
+    @Override
+    default <U, R> SetX<R> zipS(final Stream<? extends U> other, final BiFunction<? super T, ? super U, ? extends R> zipper) {
+
+        return (SetX<R>) MutableCollectionX.super.zipS(other, zipper);
+    }
 
 
     @Override
-    default SetX<PVectorX<T>> sliding(final int windowSize) ;
+    default SetX<PVectorX<T>> sliding(final int windowSize) {
+        return (SetX<PVectorX<T>>) MutableCollectionX.super.sliding(windowSize);
+    }
 
     @Override
-    default SetX<PVectorX<T>> sliding(final int windowSize, final int increment);
+    default SetX<PVectorX<T>> sliding(final int windowSize, final int increment) {
+        return (SetX<PVectorX<T>>) MutableCollectionX.super.sliding(windowSize, increment);
+    }
 
     @Override
-    default SetX<T> scanLeft(final Monoid<T> monoid) ;
+    default SetX<T> scanLeft(final Monoid<T> monoid) {
+        return (SetX<T>) MutableCollectionX.super.scanLeft(monoid);
+    }
 
     @Override
-    default <U> SetX<U> scanLeft(final U seed, final BiFunction<? super U, ? super T, ? extends U> function);
+    default <U> SetX<U> scanLeft(final U seed, final BiFunction<? super U, ? super T, ? extends U> function) {
+        return (SetX<U>) MutableCollectionX.super.scanLeft(seed, function);
+    }
 
     @Override
-    default SetX<T> scanRight(final Monoid<T> monoid) ;
+    default SetX<T> scanRight(final Monoid<T> monoid) {
+        return (SetX<T>) MutableCollectionX.super.scanRight(monoid);
+    }
 
     @Override
-    default <U> SetX<U> scanRight(final U identity, final BiFunction<? super T, ? super U, ? extends U> combiner) ;
+    default <U> SetX<U> scanRight(final U identity, final BiFunction<? super T, ? super U, ? extends U> combiner) {
+        return (SetX<U>) MutableCollectionX.super.scanRight(identity, combiner);
+    }
 
     @Override
     default SetX<T> plus(final T e) {
@@ -536,7 +623,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#cycle(int)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#cycle(int)
      */
     @Override
     default ListX<T> cycle(final long times) {
@@ -547,7 +634,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#cycle(com.aol.cyclops2.sequence.Monoid, int)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#cycle(com.aol.cyclops2.sequence.Monoid, int)
      */
     @Override
     default ListX<T> cycle(final Monoid<T> m, final long times) {
@@ -558,7 +645,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#cycleWhile(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#cycleWhile(java.util.function.Predicate)
      */
     @Override
     default ListX<T> cycleWhile(final Predicate<? super T> predicate) {
@@ -569,7 +656,7 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#cycleUntil(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#cycleUntil(java.util.function.Predicate)
      */
     @Override
     default ListX<T> cycleUntil(final Predicate<? super T> predicate) {
@@ -580,95 +667,141 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#zip(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#zip(java.util.reactiveStream.Stream)
      */
     @Override
-     <U> SetX<Tuple2<T, U>> zipS(final Stream<? extends U> other) ;
+    default <U> SetX<Tuple2<T, U>> zipS(final Stream<? extends U> other) {
+
+        return (SetX) MutableCollectionX.super.zipS(other);
+    }
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
      */
     @Override
-    <S, U> SetX<Tuple3<T, S, U>> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third);
+    default <S, U> SetX<Tuple3<T, S, U>> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third) {
+
+        return (SetX) MutableCollectionX.super.zip3(second, third);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
      */
     @Override
-     <T2, T3, T4> SetX<Tuple4<T, T2, T3, T4>> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third,
-            final Iterable<? extends T4> fourth) ;
+    default <T2, T3, T4> SetX<Tuple4<T, T2, T3, T4>> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third,
+            final Iterable<? extends T4> fourth) {
+
+        return (SetX) MutableCollectionX.super.zip4(second, third, fourth);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#zipWithIndex()
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#zipWithIndex()
      */
     @Override
-     SetX<Tuple2<T, Long>> zipWithIndex() ;
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#distinct()
-     */
-    @Override
-    SetX<T> distinct() ;
+    default SetX<Tuple2<T, Long>> zipWithIndex() {
+
+        return (SetX<Tuple2<T, Long>>) MutableCollectionX.super.zipWithIndex();
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#sorted()
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#distinct()
      */
     @Override
-     SetX<T> sorted();
+    default SetX<T> distinct() {
+
+        return (SetX<T>) MutableCollectionX.super.distinct();
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#sorted(java.util.Comparator)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#sorted()
      */
     @Override
-    SetX<T> sorted(final Comparator<? super T> c);
+    default SetX<T> sorted() {
+
+        return (SetX<T>) MutableCollectionX.super.sorted();
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#skipWhile(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#sorted(java.util.Comparator)
      */
     @Override
-     SetX<T> skipWhile(final Predicate<? super T> p) ;
+    default SetX<T> sorted(final Comparator<? super T> c) {
+
+        return (SetX<T>) MutableCollectionX.super.sorted(c);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#skipUntil(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#skipWhile(java.util.function.Predicate)
      */
     @Override
-    SetX<T> skipUntil(final Predicate<? super T> p) ;
+    default SetX<T> skipWhile(final Predicate<? super T> p) {
+
+        return (SetX<T>) MutableCollectionX.super.skipWhile(p);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#limitWhile(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#skipUntil(java.util.function.Predicate)
      */
     @Override
-    SetX<T> limitWhile(final Predicate<? super T> p) ;
+    default SetX<T> skipUntil(final Predicate<? super T> p) {
+
+        return (SetX<T>) MutableCollectionX.super.skipUntil(p);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#limitUntil(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#limitWhile(java.util.function.Predicate)
      */
     @Override
-    SetX<T> limitUntil(final Predicate<? super T> p);
+    default SetX<T> limitWhile(final Predicate<? super T> p) {
+
+        return (SetX<T>) MutableCollectionX.super.limitWhile(p);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#intersperse(java.lang.Object)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#limitUntil(java.util.function.Predicate)
      */
     @Override
-    SetX<T> intersperse(final T value) ;
+    default SetX<T> limitUntil(final Predicate<? super T> p) {
+
+        return (SetX<T>) MutableCollectionX.super.limitUntil(p);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#shuffle()
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#intersperse(java.lang.Object)
      */
     @Override
-    SetX<T> shuffle() ;
+    default SetX<T> intersperse(final T value) {
+
+        return (SetX<T>) MutableCollectionX.super.intersperse(value);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#skipLast(int)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#shuffle()
      */
     @Override
-    SetX<T> skipLast(final int num) ;
+    default SetX<T> shuffle() {
+
+        return (SetX<T>) MutableCollectionX.super.shuffle();
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#limitLast(int)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#skipLast(int)
      */
     @Override
-    SetX<T> limitLast(final int num) ;
+    default SetX<T> skipLast(final int num) {
+
+        return (SetX<T>) MutableCollectionX.super.skipLast(num);
+    }
+
+    /* (non-Javadoc)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#limitLast(int)
+     */
+    @Override
+    default SetX<T> limitLast(final int num) {
+
+        return (SetX<T>) MutableCollectionX.super.limitLast(num);
+    }
 
     /* (non-Javadoc)
      * @see com.aol.cyclops2.types.OnEmptySwitch#onEmptySwitch(java.util.function.Supplier)
@@ -681,210 +814,265 @@ public interface SetX<T> extends To<SetX<T>>,Set<T>, FluentCollectionX<T>, OnEmp
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#onEmpty(java.lang.Object)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#onEmpty(java.lang.Object)
      */
     @Override
-    SetX<T> onEmpty(final T value);
+    default SetX<T> onEmpty(final T value) {
+
+        return (SetX<T>) MutableCollectionX.super.onEmpty(value);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#onEmptyGet(java.util.function.Supplier)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#onEmptyGet(java.util.function.Supplier)
      */
     @Override
-    SetX<T> onEmptyGet(final Supplier<? extends T> supplier) ;
+    default SetX<T> onEmptyGet(final Supplier<? extends T> supplier) {
+
+        return (SetX<T>) MutableCollectionX.super.onEmptyGet(supplier);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#onEmptyThrow(java.util.function.Supplier)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#onEmptyThrow(java.util.function.Supplier)
      */
     @Override
-      <X extends Throwable> SetX<T> onEmptyThrow(final Supplier<? extends X> supplier);
+    default <X extends Throwable> SetX<T> onEmptyThrow(final Supplier<? extends X> supplier) {
+
+        return (SetX<T>) MutableCollectionX.super.onEmptyThrow(supplier);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#shuffle(java.util.Random)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#shuffle(java.util.Random)
      */
     @Override
-     SetX<T> shuffle(final Random random) ;
+    default SetX<T> shuffle(final Random random) {
+
+        return (SetX<T>) MutableCollectionX.super.shuffle(random);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#ofType(java.lang.Class)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#ofType(java.lang.Class)
      */
     @Override
     default <U> SetX<U> ofType(final Class<? extends U> type) {
 
-        return (SetX<U>) FluentCollectionX.super.ofType(type);
+        return (SetX<U>) MutableCollectionX.super.ofType(type);
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#filterNot(java.util.function.Predicate)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#filterNot(java.util.function.Predicate)
      */
     @Override
-     SetX<T> filterNot(final Predicate<? super T> fn) ;
+    default SetX<T> filterNot(final Predicate<? super T> fn) {
+
+        return (SetX<T>) MutableCollectionX.super.filterNot(fn);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#notNull()
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#notNull()
      */
     @Override
-     SetX<T> notNull() ;
+    default SetX<T> notNull() {
+
+        return (SetX<T>) MutableCollectionX.super.notNull();
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#removeAll(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#removeAll(java.util.reactiveStream.Stream)
      */
     @Override
-     SetX<T> removeAllS(final Stream<? extends T> stream);
+    default SetX<T> removeAllS(final Stream<? extends T> stream) {
+
+        return (SetX<T>) MutableCollectionX.super.removeAllS(stream);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#removeAll(java.lang.Iterable)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#removeAll(java.lang.Iterable)
      */
     @Override
-     SetX<T> removeAllI(final Iterable<? extends T> it);
+    default SetX<T> removeAllI(final Iterable<? extends T> it) {
+
+        return (SetX<T>) MutableCollectionX.super.removeAllI(it);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#removeAll(java.lang.Object[])
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#removeAll(java.lang.Object[])
      */
     @Override
-     SetX<T> removeAll(final T... values) ;
+    default SetX<T> removeAll(final T... values) {
+
+        return (SetX<T>) MutableCollectionX.super.removeAll(values);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#retainAllI(java.lang.Iterable)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#retainAllI(java.lang.Iterable)
      */
     @Override
-     SetX<T> retainAllI(final Iterable<? extends T> it) ;
+    default SetX<T> retainAllI(final Iterable<? extends T> it) {
+
+        return (SetX<T>) MutableCollectionX.super.retainAllI(it);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#retainAllI(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#retainAllI(java.util.reactiveStream.Stream)
      */
     @Override
-     SetX<T> retainAllS(final Stream<? extends T> seq) ;
+    default SetX<T> retainAllS(final Stream<? extends T> seq) {
+
+        return (SetX<T>) MutableCollectionX.super.retainAllS(seq);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#retainAllI(java.lang.Object[])
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#retainAllI(java.lang.Object[])
      */
     @Override
-     SetX<T> retainAll(final T... values) ;
+    default SetX<T> retainAll(final T... values) {
+
+        return (SetX<T>) MutableCollectionX.super.retainAll(values);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.standard.FluentCollectionX#cast(java.lang.Class)
+     * @see com.aol.cyclops2.collections.extensions.standard.MutableCollectionX#cast(java.lang.Class)
      */
     @Override
     default <U> SetX<U> cast(final Class<? extends U> type) {
 
-        return (SetX<U>) FluentCollectionX.super.cast(type);
+        return (SetX<U>) MutableCollectionX.super.cast(type);
     }
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.standard.FluentCollectionX#grouped(int, java.util.function.Supplier)
+     * @see com.aol.cyclops2.data.collections.extensions.standard.MutableCollectionX#grouped(int, java.util.function.Supplier)
      */
     @Override
-     <C extends Collection<? super T>> SetX<C> grouped(final int size, final Supplier<C> supplier);
+    default <C extends Collection<? super T>> SetX<C> grouped(final int size, final Supplier<C> supplier) {
+
+        return (SetX<C>) MutableCollectionX.super.grouped(size, supplier);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.standard.FluentCollectionX#groupedUntil(java.util.function.Predicate)
+     * @see com.aol.cyclops2.data.collections.extensions.standard.MutableCollectionX#groupedUntil(java.util.function.Predicate)
      */
     @Override
-     SetX<ListX<T>> groupedUntil(final Predicate<? super T> predicate) ;
+    default SetX<ListX<T>> groupedUntil(final Predicate<? super T> predicate) {
+
+        return (SetX<ListX<T>>) MutableCollectionX.super.groupedUntil(predicate);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.standard.FluentCollectionX#groupedWhile(java.util.function.Predicate)
+     * @see com.aol.cyclops2.data.collections.extensions.standard.MutableCollectionX#groupedWhile(java.util.function.Predicate)
      */
     @Override
-     SetX<ListX<T>> groupedWhile(final Predicate<? super T> predicate) ;
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.standard.FluentCollectionX#groupedWhile(java.util.function.Predicate, java.util.function.Supplier)
-     */
-    @Override
-     <C extends Collection<? super T>> SetX<C> groupedWhile(final Predicate<? super T> predicate, final Supplier<C> factory) ;
+    default SetX<ListX<T>> groupedWhile(final Predicate<? super T> predicate) {
+
+        return (SetX<ListX<T>>) MutableCollectionX.super.groupedWhile(predicate);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.standard.FluentCollectionX#groupedUntil(java.util.function.Predicate, java.util.function.Supplier)
+     * @see com.aol.cyclops2.data.collections.extensions.standard.MutableCollectionX#groupedWhile(java.util.function.Predicate, java.util.function.Supplier)
      */
     @Override
-     <C extends Collection<? super T>> SetX<C> groupedUntil(final Predicate<? super T> predicate, final Supplier<C> factory) ;
+    default <C extends Collection<? super T>> SetX<C> groupedWhile(final Predicate<? super T> predicate, final Supplier<C> factory) {
+
+        return (SetX<C>) MutableCollectionX.super.groupedWhile(predicate, factory);
+    }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.standard.FluentCollectionX#groupedStatefullyUntil(java.util.function.BiPredicate)
+     * @see com.aol.cyclops2.data.collections.extensions.standard.MutableCollectionX#groupedUntil(java.util.function.Predicate, java.util.function.Supplier)
      */
     @Override
-     SetX<ListX<T>> groupedStatefullyUntil(final BiPredicate<ListX<? super T>, ? super T> predicate) ;
+    default <C extends Collection<? super T>> SetX<C> groupedUntil(final Predicate<? super T> predicate, final Supplier<C> factory) {
+
+        return (SetX<C>) MutableCollectionX.super.groupedUntil(predicate, factory);
+    }
+
+    /* (non-Javadoc)
+     * @see com.aol.cyclops2.data.collections.extensions.standard.MutableCollectionX#groupedStatefullyUntil(java.util.function.BiPredicate)
+     */
+    @Override
+    default SetX<ListX<T>> groupedStatefullyUntil(final BiPredicate<ListX<? super T>, ? super T> predicate) {
+
+        return (SetX<ListX<T>>) MutableCollectionX.super.groupedStatefullyUntil(predicate);
+    }
 
 
     @Override
     default <R> SetX<R> retry(final Function<? super T, ? extends R> fn) {
-        return (SetX<R>)FluentCollectionX.super.retry(fn);
+        return (SetX<R>)MutableCollectionX.super.retry(fn);
     }
 
     @Override
     default <R> SetX<R> retry(final Function<? super T, ? extends R> fn, final int retries, final long delay, final TimeUnit timeUnit) {
-        return (SetX<R>)FluentCollectionX.super.retry(fn);
+        return (SetX<R>)MutableCollectionX.super.retry(fn);
     }
 
     @Override
     default <R> SetX<R> flatMapS(Function<? super T, ? extends Stream<? extends R>> fn) {
-        return (SetX<R>)FluentCollectionX.super.flatMapS(fn);
+        return (SetX<R>)MutableCollectionX.super.flatMapS(fn);
     }
 
     @Override
     default <R> SetX<R> flatMapP(Function<? super T, ? extends Publisher<? extends R>> fn) {
-        return (SetX<R>)FluentCollectionX.super.flatMapP(fn);
+        return (SetX<R>)MutableCollectionX.super.flatMapP(fn);
     }
 
     @Override
     default SetX<T> prependS(Stream<? extends T> stream) {
-        return (SetX<T>)FluentCollectionX.super.prependS(stream);
+        return (SetX<T>)MutableCollectionX.super.prependS(stream);
     }
 
     @Override
     default SetX<T> append(T... values) {
-        return (SetX<T>)FluentCollectionX.super.append(values);
+        return (SetX<T>)MutableCollectionX.super.append(values);
     }
 
     @Override
     default SetX<T> append(T value) {
-        return (SetX<T>)FluentCollectionX.super.append(value);
+        return (SetX<T>)MutableCollectionX.super.append(value);
     }
 
     @Override
     default SetX<T> prepend(T value) {
-        return (SetX<T>)FluentCollectionX.super.prepend(value);
+        return (SetX<T>)MutableCollectionX.super.prepend(value);
     }
 
     @Override
     default SetX<T> prepend(T... values) {
-        return (SetX<T>)FluentCollectionX.super.prepend(values);
+        return (SetX<T>)MutableCollectionX.super.prepend(values);
     }
 
     @Override
     default SetX<T> insertAt(int pos, T... values) {
-        return (SetX<T>)FluentCollectionX.super.insertAt(pos,values);
+        return (SetX<T>)MutableCollectionX.super.insertAt(pos,values);
     }
 
     @Override
     default SetX<T> deleteBetween(int start, int end) {
-        return (SetX<T>)FluentCollectionX.super.deleteBetween(start,end);
+        return (SetX<T>)MutableCollectionX.super.deleteBetween(start,end);
     }
 
     @Override
     default SetX<T> insertAtS(int pos, Stream<T> stream) {
-        return (SetX<T>)FluentCollectionX.super.insertAtS(pos,stream);
+        return (SetX<T>)MutableCollectionX.super.insertAtS(pos,stream);
     }
 
     @Override
     default SetX<T> recover(final Function<? super Throwable, ? extends T> fn) {
-        return (SetX<T>)FluentCollectionX.super.recover(fn);
+        return (SetX<T>)MutableCollectionX.super.recover(fn);
     }
 
     @Override
     default <EX extends Throwable> SetX<T> recover(Class<EX> exceptionClass, final Function<? super EX, ? extends T> fn) {
-        return (SetX<T>)FluentCollectionX.super.recover(exceptionClass,fn);
+        return (SetX<T>)MutableCollectionX.super.recover(exceptionClass,fn);
     }
 
     @Override
     default SetX<T> plusLoop(int max, IntFunction<T> value) {
-        return (SetX<T>)FluentCollectionX.super.plusLoop(max,value);
+        return (SetX<T>)MutableCollectionX.super.plusLoop(max,value);
     }
 
     @Override
     default SetX<T> plusLoop(Supplier<Optional<T>> supplier) {
-        return (SetX<T>)FluentCollectionX.super.plusLoop(supplier);
+        return (SetX<T>)MutableCollectionX.super.plusLoop(supplier);
     }
 
     /**
