@@ -1,7 +1,9 @@
 package com.aol.cyclops2.data.collections.extensions.lazy;
 
 
+import com.aol.cyclops2.data.collections.extensions.standard.MutableCollectionX;
 import cyclops.collections.SetX;
+import cyclops.function.Reducer;
 import cyclops.stream.ReactiveSeq;
 
 import java.util.Collection;
@@ -36,8 +38,17 @@ import java.util.stream.Stream;
  *
  * @param <T> the type of elements held in this collection
  */
-public class LazySetX<T> extends AbstractLazyMutableCollection<T,Set<T>> implements SetX<T> {
+public class LazySetX<T> extends AbstractLazyMutableCollection<T,Set<T>> implements  MutableCollectionX<T>,SetX<T> {
 
+    @Override
+    public SetX<T> persistent() {
+        return null;
+    }
+
+    @Override
+    public SetX<T> persistent(Reducer<? extends Set<T>> reducer) {
+        return null;
+    }
 
     public LazySetX(Set<T> list, ReactiveSeq<T> seq, Collector<T, ?, Set<T>> collector) {
         super(list, seq, collector);
