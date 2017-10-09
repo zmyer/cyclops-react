@@ -4,9 +4,10 @@ import com.aol.cyclops2.internal.stream.SeqUtils;
 import com.aol.cyclops2.internal.stream.StreamableImpl;
 import com.aol.cyclops2.types.*;
 import com.aol.cyclops2.types.factory.Unit;
+import com.aol.cyclops2.types.foldable.Folds;
 import com.aol.cyclops2.types.foldable.To;
 import com.aol.cyclops2.types.functor.Transformable;
-import com.aol.cyclops2.types.foldable.CyclopsCollectable;
+import com.aol.cyclops2.types.reactive.ReactiveStreamsTerminalOperations;
 import com.aol.cyclops2.types.stream.HotStream;
 import com.aol.cyclops2.types.stream.ToStream;
 import com.aol.cyclops2.types.traversable.FoldableTraversable;
@@ -22,12 +23,10 @@ import cyclops.monads.AnyM;
 import cyclops.monads.Witness;
 import lombok.AllArgsConstructor;
 import lombok.val;
-import org.jooq.lambda.Collectable;
-import org.jooq.lambda.Seq;
-import org.jooq.lambda.tuple.Tuple;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+import cyclops.collections.tuple.Tuple;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.reactivestreams.Publisher;
 
 import java.util.*;
@@ -45,8 +44,10 @@ import java.util.stream.*;
  */
 public interface Streamable<T> extends To<Streamable<T>>,
                                         ToStream<T>,
+                                        Iterable<T>,
+                                        Folds<T>,
+                                        ReactiveStreamsTerminalOperations<T>,
                                         FoldableTraversable<T>,
-                                        CyclopsCollectable<T>,
                                         Transformable<T>,
                                         Filters<T>,
                                         Traversable<T>,
@@ -60,6 +61,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
 
     @Override
     default ReactiveSeq<T> reactiveSeq() {
+
         return Streams.oneShotStream(StreamSupport.stream(this.spliterator(),false));
     }
 
@@ -151,14 +153,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
         }
     }
 
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.reactiveStream.CyclopsCollectable#collectors()
-     */
-    @Override
-    default Collectable<T> collectors() {
 
-        return Seq.seq((Stream<T>)stream());
-    }
 
     /* (non-Javadoc)
      * @see com.aol.cyclops2.types.traversable.Traversable#combine(java.util.function.BiPredicate, java.util.function.BinaryOperator)
@@ -191,7 +186,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.stream.Stream)
      */
     @Override
     default <U> Streamable<Tuple2<T, U>> zipS(final Stream<? extends U> other) {
@@ -200,7 +195,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip3(java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <S, U> Streamable<Tuple3<T, S, U>> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third) {
@@ -209,7 +204,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip4(java.util.stream.Stream, java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <T2, T3, T4> Streamable<Tuple4<T, T2, T3, T4>> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third,
@@ -227,23 +222,6 @@ public interface Streamable<T> extends To<Streamable<T>>,
         return Streamable.fromIterable(FoldableTraversable.super.groupedStatefullyUntil(predicate));
     }
 
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#grouped(java.util.function.Function, java.util.reactiveStream.Collector)
-     */
-    @Override
-    default <K, A, D> Streamable<Tuple2<K, D>> grouped(final Function<? super T, ? extends K> classifier,
-            final Collector<? super T, A, D> downstream) {
-        return Streamable.fromIterable(FoldableTraversable.super.grouped(classifier, downstream));
-    }
-
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#grouped(java.util.function.Function)
-     */
-    @Override
-    default <K> Streamable<Tuple2<K, ReactiveSeq<T>>> grouped(final Function<? super T, ? extends K> classifier) {
-
-        return Streamable.fromIterable(FoldableTraversable.super.grouped(classifier));
-    }
 
     /* (non-Javadoc)
      * @see com.aol.cyclops2.types.traversable.Traversable#takeWhile(java.util.function.Predicate)
@@ -431,7 +409,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code 
      * List<String> result = 	Streamable.of(1,2,3)
      * 									 .prepend(100,200,300)
-    									 .map(it ->it+"!!")
+    									 .transform(it ->it+"!!")
     									 .collect(CyclopsCollectors.toList());
     
     		assertThat(result,equalTo(Arrays.asList("100!!","200!!","300!!","1!!","2!!","3!!")));
@@ -503,10 +481,10 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * 
      * <pre>
      * {@code 
-     * 	Streamable.of(1,2,3).map(i->i+2);
+     * 	Streamable.of(1,2,3).transform(i->i+2);
      *  //Streamable[3,4,5]
      *  
-     *  Streamable.of(1,2,3).map(i->"hello"+(i+2));
+     *  Streamable.of(1,2,3).transform(i->"hello"+(i+2));
      *  
      *   //Streamable["hello3","hello4","hello5"]
      * }
@@ -527,7 +505,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code
      *    Streamable.of(1,2,3)
      *              .peek(System.out::println)
-     *              .map(i->i+2);
+     *              .transform(i->i+2);
      * }
      * </pre>
      * 
@@ -540,7 +518,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /* (non-Javadoc)
-     * @see java.util.reactiveStream.Stream#filtered(java.util.function.Predicate)
+     * @see java.util.stream.Stream#filtered(java.util.function.Predicate)
      */
     @Override
     default Streamable<T> filter(final Predicate<? super T> fn) {
@@ -548,7 +526,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /* (non-Javadoc)
-     * @see java.util.reactiveStream.Stream#flatMap(java.util.function.Function)
+     * @see java.util.stream.Stream#flatMap(java.util.function.Function)
      */
     default <R> Streamable<R> flatMap(final Function<? super T, Streamable<? extends R>> fn) {
         return Streamable.fromStream(reactiveSeq().flatMap(i -> fn.apply(i)
@@ -561,7 +539,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code
      *
      *      ReactiveSeq.of(1,2,3)
-     *                 .map(i->i*2)
+     *                 .transform(i->i*2)
      *                 .coflatMap(s -> s.reduce(0,(a,b)->a+b))
      *
      *      //ReactiveSeq[12]
@@ -585,21 +563,21 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /* (non-Javadoc)
-     * @see java.util.reactiveStream.Stream#forEachOrdered(java.util.function.Consumer)
+     * @see java.util.stream.Stream#forEachOrdered(java.util.function.Consumer)
      */
     default void forEachOrdered(final Consumer<? super T> action) {
         reactiveSeq().forEachOrdered(action);
     }
 
     /* (non-Javadoc)
-     * @see java.util.reactiveStream.Stream#toArray()
+     * @see java.util.stream.Stream#toArray()
      */
     default Object[] toArray() {
         return reactiveSeq().toArray();
     }
 
     /* (non-Javadoc)
-     * @see java.util.reactiveStream.Stream#toArray(java.util.function.IntFunction)
+     * @see java.util.stream.Stream#toArray(java.util.function.IntFunction)
      */
     default <A> A[] toArray(final IntFunction<A[]> generator) {
         return reactiveSeq().toArray(generator);
@@ -698,7 +676,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * @return Element and Sequence
      */
     default T elementAt(final int index) {
-        return reactiveSeq().elementAt(index).v1;
+        return reactiveSeq().elementAt(index)._1();
     }
 
     /**
@@ -838,8 +816,8 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * <pre>
      * {@code 
      *  Tuple2<Streamable<Integer>, Streamable<Integer>> copies =of(1,2,3,4,5,6).duplicate();
-    	 assertTrue(copies.v1.anyMatch(i->i==2));
-    	 assertTrue(copies.v2.anyMatch(i->i==2));
+    	 assertTrue(copies._1.anyMatch(i->i==2));
+    	 assertTrue(copies._2.anyMatch(i->i==2));
      * 
      * }
      * </pre>
@@ -1214,7 +1192,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * 
      * <pre>
      * {@code 
-     * assertThat(of("a", "ab", "abc").map(str->str.length()).scanRight(0, (t, u) -> u + t).toList().size(),
+     * assertThat(of("a", "ab", "abc").transform(str->str.length()).scanRight(0, (t, u) -> u + t).toList().size(),
             is(asList(0, 3, 5, 6).size()));
      * 
      * }
@@ -1361,7 +1339,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * assertThat(Streamable.of(1,2,3,4,5).allMatch(it-> it>0 && it <6),equalTo(true));
      * }
      * </pre>
-     * @param c Predicate to check if all match
+     * @param c Predicate to check if all fold
      */
     @Override
     default boolean allMatch(final Predicate<? super T> c) {
@@ -1375,7 +1353,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * assertThat(Streamable.of(1,2,3,4,5).anyMatch(it-> it.equals(3)),equalTo(true));
      * }
      * </pre>
-     * @param c Predicate to check if any match
+     * @param c Predicate to check if any fold
      */
     @Override
     default boolean anyMatch(final Predicate<? super T> c) {
@@ -1450,39 +1428,6 @@ public interface Streamable<T> extends To<Streamable<T>>,
         return reactiveSeq().join(sep, start, end);
     }
 
-    /**
-     * Extract the minimum as determined by supplied function
-     * 
-     */
-    @Override
-    default <C extends Comparable<? super C>> Optional<T> minBy(final Function<? super T, ? extends C> f) {
-        return reactiveSeq().minBy(f);
-    }
-
-    /* (non-Javadoc)
-     * @see java.util.reactiveStream.Stream#min(java.util.Comparator)
-     */
-    @Override
-    default Optional<T> min(final Comparator<? super T> comparator) {
-        return reactiveSeq().min(comparator);
-    }
-
-    /**
-     * Extract the maximum as determined by the supplied function
-     * 
-     */
-    @Override
-    default <C extends Comparable<? super C>> Optional<T> maxBy(final Function<? super T, ? extends C> f) {
-        return reactiveSeq().maxBy(f);
-    }
-
-    /* (non-Javadoc)
-     * @see java.util.reactiveStream.Stream#max(java.util.Comparator)
-     */
-    @Override
-    default Optional<T> max(final Comparator<? super T> comparator) {
-        return reactiveSeq().max(comparator);
-    }
 
     /**
      * @return First matching element in sequential order
@@ -1520,7 +1465,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /**
-     * Attempt to map this Sequence to the same type as the supplied Monoid (Reducer)
+     * Attempt to transform this Sequence to the same type as the supplied Monoid (Reducer)
      * Then use Monoid to reduce values
      * <pre>
      * {@code 
@@ -1539,7 +1484,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /**
-     *  Attempt to map this Monad to the same type as the supplied Monoid, using supplied function
+     *  Attempt to transform this Monad to the same type as the supplied Monoid, using supplied function
      *  Then use Monoid to reduce values
      *  
      *  <pre>
@@ -1563,7 +1508,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      *  }
      *  </pre>
      *  
-     * @param mapper Function to map Monad type
+     * @param mapper Function to transform Monad type
      * @param reducer Monoid to reduce values
      * @return Reduce result
      */
@@ -1591,7 +1536,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     /* 
      * <pre>
      * {@code 
-     * assertThat(Streamable.of(1,2,3,4,5).map(it -> it*100).reduce( (acc,next) -> acc+next).get(),equalTo(1500));
+     * assertThat(Streamable.of(1,2,3,4,5).transform(it -> it*100).reduce( (acc,next) -> acc+next).get(),equalTo(1500));
      * }
      * </pre>
      * 
@@ -1602,7 +1547,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /* (non-Javadoc)
-    * @see java.util.reactiveStream.Stream#reduce(java.lang.Object, java.util.function.BinaryOperator)
+    * @see java.util.stream.Stream#reduce(java.lang.Object, java.util.function.BinaryOperator)
     */
     @Override
     default T reduce(final T identity, final BinaryOperator<T> accumulator) {
@@ -1610,7 +1555,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /* (non-Javadoc)
-    * @see java.util.reactiveStream.Stream#reduce(java.lang.Object, java.util.function.BiFunction, java.util.function.BinaryOperator)
+    * @see java.util.stream.Stream#reduce(java.lang.Object, java.util.function.BiFunction, java.util.function.BinaryOperator)
     */
     @Override
     default <U> U reduce(final U identity, final BiFunction<U, ? super T, U> accumulator, final BinaryOperator<U> combiner) {
@@ -1704,7 +1649,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /**
-     *  Attempt to map this Monad to the same type as the supplied Monoid (using mapToType on the monoid interface)
+     *  Attempt to transform this Monad to the same type as the supplied Monoid (using mapToType on the monoid interface)
      * Then use Monoid to reduce values
      * <pre>
     	{@code
@@ -1889,7 +1834,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code 
      * List<String> result = 	Streamable.of(1,2,3)
      *                                  .appendStream(Streamable.of(100,200,300))
-    									.map(it ->it+"!!")
+    									.transform(it ->it+"!!")
     									.collect(CyclopsCollectors.toList());
     
     		assertThat(result,equalTo(Arrays.asList("1!!","2!!","3!!","100!!","200!!","300!!")));
@@ -1910,7 +1855,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code 
      * List<String> result = Streamable.of(1,2,3)
      * 								  .prependStream(of(100,200,300))
-    								  .map(it ->it+"!!")
+    								  .transform(it ->it+"!!")
     								  .collect(CyclopsCollectors.toList());
     
     		assertThat(result,equalTo(Arrays.asList("100!!","200!!","300!!","1!!","2!!","3!!")));
@@ -1944,7 +1889,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code 
      * List<String> result = Streamable.of(1,2,3)
      * 								   .append(100,200,300)
-    									.map(it ->it+"!!")
+    									.transform(it ->it+"!!")
     									.collect(CyclopsCollectors.toList());
     
     		assertThat(result,equalTo(Arrays.asList("1!!","2!!","3!!","100!!","200!!","300!!")));
@@ -1963,7 +1908,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code 
      * List<String> result = 	Streamable.of(1,2,3)
      * 									 .prepend(100,200,300)
-    									 .map(it ->it+"!!")
+    									 .transform(it ->it+"!!")
     									 .collect(CyclopsCollectors.toList());
     
     		assertThat(result,equalTo(Arrays.asList("100!!","200!!","300!!","1!!","2!!","3!!")));
@@ -1982,7 +1927,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code 
      * List<String> result = 	Streamable.of(1,2,3)
      * 									 .insertAt(1,100,200,300)
-    									 .map(it ->it+"!!")
+    									 .transform(it ->it+"!!")
     									 .collect(CyclopsCollectors.toList());
     
     		assertThat(result,equalTo(Arrays.asList("1!!","100!!","200!!","300!!","2!!","3!!")));
@@ -2003,7 +1948,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code 
      * List<String> result = 	Streamable.of(1,2,3,4,5,6)
      * 									 .deleteBetween(2,4)
-    									 .map(it ->it+"!!")
+    									 .transform(it ->it+"!!")
     									 .collect(CyclopsCollectors.toList());
     
     		assertThat(result,equalTo(Arrays.asList("1!!","2!!","5!!","6!!")));
@@ -2023,7 +1968,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * {@code 
      * List<String> result = 	Streamable.of(1,2,3)
      * 									 .insertAtS(1,of(100,200,300))
-    									 .map(it ->it+"!!")
+    									 .transform(it ->it+"!!")
     									 .collect(CyclopsCollectors.toList());
     
     		assertThat(result,equalTo(Arrays.asList("1!!","100!!","200!!","300!!","2!!","3!!")));
@@ -2059,7 +2004,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * <pre>
      * {@code
      * assertTrue(Streamable.of(1,2,3,4,5,6)
-    			.endsWith(Stream.of(5,6))); 
+    			.endsWith(Stream.of(5,6)));
      * }
      * </pre>
      * 
@@ -2147,7 +2092,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /**
-     * Turns this Streamable into a HotStream, a connectable Stream, being executed on a thread on the 
+     * Turns this Streamable into a HotStream, a connectable Stream, being executed on a thread on the
      * supplied executor, that is producing data
      * <pre>
      * {@code 
@@ -2172,7 +2117,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * <pre>
      * {@code 
      * 	assertThat(Streamable.of(1,2,3,4)
-    				.map(u->{throw new RuntimeException();})
+    				.transform(u->{throw new RuntimeException();})
     				.recover(e->"hello")
     				.firstValue(),equalTo("hello"));
      * }
@@ -2220,7 +2165,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * 
      * <pre>
      * {@code 
-     * Streamable.of(1,2,3,4,5).get(2).v1
+     * Streamable.of(1,2,3,4,5).get(2)._1
      * //3
      * }
      * </pre>
@@ -2365,7 +2310,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     /**
-     * Unzip a zipped Stream 
+     * Unzip a zipped Stream
      * 
      * <pre>
      * {@code 
@@ -2419,34 +2364,9 @@ public interface Streamable<T> extends To<Streamable<T>>,
                           .map4(s -> fromStream(s));
     }
 
-    /* (non-Javadoc)
-     * @see org.jooq.lambda.Seq#crossJoin(java.util.reactiveStream.Stream)
-     */
-    default <U> Streamable<Tuple2<T, U>> crossJoin(final Streamable<U> other) {
-        return fromStream(seq().crossJoin(other));
-    }
 
-    /* (non-Javadoc)
-     * @see org.jooq.lambda.Seq#innerJoin(java.util.reactiveStream.Stream, java.util.function.BiPredicate)
-     */
-    default <U> Streamable<Tuple2<T, U>> innerJoin(final Streamable<U> other, final BiPredicate<T, U> predicate) {
-        return fromStream(seq().innerJoin(other, predicate));
-    }
 
-    /* (non-Javadoc)
-     * @see org.jooq.lambda.Seq#leftOuterJoin(java.util.reactiveStream.Stream, java.util.function.BiPredicate)
-     */
-    default <U> Streamable<Tuple2<T, U>> leftOuterJoin(final Streamable<U> other, final BiPredicate<T, U> predicate) {
-        return fromStream(reactiveSeq().jool(s->s.leftOuterJoin(other, predicate)));
 
-    }
-
-    /* (non-Javadoc)
-     * @see org.jooq.lambda.Seq#rightOuterJoin(java.util.reactiveStream.Stream, java.util.function.BiPredicate)
-     */
-    default <U> Streamable<Tuple2<T, U>> rightOuterJoin(final Streamable<U> other, final BiPredicate<T, U> predicate) {
-        return fromStream(reactiveSeq().jool(s->s.rightOuterJoin(other, predicate)));
-    }
 
     /** If this Streamable is empty one it with a another Stream
      * 
@@ -2482,7 +2402,7 @@ public interface Streamable<T> extends To<Streamable<T>>,
     }
 
     default Streamable<T> concat(final Streamable<T> other) {
-        return fromStream(seq().concat(other));
+        return fromStream(reactiveSeq().append(other));
     }
 
     default Streamable<T> concat(final T other) {
@@ -2808,8 +2728,8 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * <pre>
      * {@code 
      * assertThat(Streamable.of(1,2,3,4)
-    					   .map(i->i+2)
-    					   .map(u->{throw new RuntimeException();})
+    					   .transform(i->i+2)
+    					   .transform(u->{throw new RuntimeException();})
     					   .recover(e->"hello")
     					   .firstValue(),equalTo("hello"));
      * }
@@ -2827,8 +2747,8 @@ public interface Streamable<T> extends To<Streamable<T>>,
      * <pre>
      * {@code 
      * assertThat(Streamable.of(1,2,3,4)
-    				.map(i->i+2)
-    				.map(u->{ExceptionSoftener.throwSoftenedException( new IOException()); return null;})
+    				.transform(i->i+2)
+    				.transform(u->{ExceptionSoftener.throwSoftenedException( new IOException()); return null;})
     				.recover(IOException.class,e->"hello")
     				.firstValue(),equalTo("hello"));
      * 

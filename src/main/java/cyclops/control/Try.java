@@ -5,7 +5,6 @@ import static cyclops.monads.Witness.*;
 
 import java.io.Closeable;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -20,30 +19,28 @@ import java.util.stream.Stream;
 import com.aol.cyclops2.data.collections.extensions.CollectionX;
 import com.aol.cyclops2.hkt.Higher;
 import com.aol.cyclops2.hkt.Higher2;
+import com.aol.cyclops2.matching.Sealed2;
 import com.aol.cyclops2.types.*;
 import com.aol.cyclops2.types.Value;
 import com.aol.cyclops2.types.anyM.AnyMValue2;
 import com.aol.cyclops2.types.foldable.To;
 import com.aol.cyclops2.types.recoverable.RecoverableFrom;
 import cyclops.collections.mutable.ListX;
-import cyclops.companion.Monoids;
 import cyclops.control.lazy.Either;
 import cyclops.function.*;
 import cyclops.monads.AnyM;
-import cyclops.monads.Witness;
 import cyclops.stream.ReactiveSeq;
 import cyclops.typeclasses.*;
 import cyclops.typeclasses.comonad.Comonad;
 import cyclops.typeclasses.comonad.ComonadByPure;
 import cyclops.typeclasses.foldable.Foldable;
 import cyclops.typeclasses.foldable.Unfoldable;
-import cyclops.typeclasses.functor.BiFunctor;
 import cyclops.typeclasses.functor.Functor;
 import cyclops.typeclasses.monad.*;
 import lombok.*;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.reactivestreams.Publisher;
 
 import com.aol.cyclops2.util.ExceptionSoftener;
@@ -94,7 +91,7 @@ import org.reactivestreams.Subscription;
  * {@code
  *
  * Try.withCatch(()-> exceptional2())
-.map(i->i+" woo!")
+.transform(i->i+" woo!")
 .onFail(System.out::println)
 .orElse("public");
 
@@ -130,17 +127,17 @@ throw new IOException();
  *   Try.catchExceptions(FileNotFoundException.class,IOException.class)
 .init(()->new BufferedReader(new FileReader("file.txt")))
 .tryWithResources(this::read)
-.map(this::processData)
+.transform(this::processData)
 .recover(e->"public);
  *
  * }
  * </pre>
  *
- * By public Try does not catch exception within it's operators such as map / flatMap, to catch Exceptions in ongoing operations use @see {@link Try#of(Object, Class...)}
+ * By public Try does not catch exception within it's operators such as transform / flatMap, to catch Exceptions in ongoing operations use @see {@link Try#of(Object, Class...)}
  * <pre>
  * {@code
  *  Try.of(2, RuntimeException.class)
-.map(i->{throw new RuntimeException();});
+.transform(i->{throw new RuntimeException();});
 
 //Failure[RuntimeException]
  *
@@ -156,6 +153,7 @@ throw new IOException();
 public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
                                                       RecoverableFrom<X,T>,
                                                       MonadicValue<T>,
+                                                       Sealed2<T,X>,
                                                       Higher2<tryType,X,T> {
 
 
@@ -166,6 +164,18 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
         return xor;
     }
 
+    public static  <X extends Throwable,T,R> Try<R,X> tailRec(T initial, Function<? super T, ? extends Try<? extends Xor<T, R>,X>> fn){
+        Try<? extends Xor<T, R>,X> next[] = new Try[1];
+        next[0] = Try.success(Xor.secondary(initial));
+        boolean cont = true;
+        do {
+            cont = next[0].visit(p -> p.visit(s -> {
+                next[0] = fn.apply(s);
+                return true;
+            }, pr -> false), () -> false);
+        } while (cont);
+        return next[0].map(Xor::get);
+    }
     public static  <X extends Throwable,T> Kleisli<Higher<tryType,X>,Try<T,X>,T> kindKleisli(){
         return Kleisli.of(Try.Instances.monad(), Try::widen);
     }
@@ -528,7 +538,7 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     }
 
     @Override
-    public <S, U, R> Try<R,X> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Fn3<? super T, ? super S, ? super U, ? extends R> fn3) {
+    public <S, U, R> Try<R,X> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Function3<? super T, ? super S, ? super U, ? extends R> fn3) {
         return (Try<R,X>)MonadicValue.super.zip3(second,third,fn3);
     }
 
@@ -538,7 +548,7 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     }
 
     @Override
-    public <T2, T3, T4, R> Try<R,X> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Fn4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
+    public <T2, T3, T4, R> Try<R,X> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Function4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
         return (Try<R,X>)MonadicValue.super.zip4(second,third,fourth,fn);
     }
 
@@ -568,8 +578,8 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     @Override
     public <T2, R1, R2, R3, R> Try<R,X> forEach4(Function<? super T, ? extends MonadicValue<R1>> value1,
                                                  BiFunction<? super T, ? super R1, ? extends MonadicValue<R2>> value2,
-                                                 Fn3<? super T, ? super R1, ? super R2, ? extends MonadicValue<R3>> value3,
-                                                 Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                                 Function3<? super T, ? super R1, ? super R2, ? extends MonadicValue<R3>> value3,
+                                                 Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         return (Try<R,X>)MonadicValue.super.forEach4(value1, value2, value3, yieldingFunction);
     }
 
@@ -579,9 +589,9 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     @Override
     public <T2, R1, R2, R3, R> Try<R,X> forEach4(Function<? super T, ? extends MonadicValue<R1>> value1,
                                                  BiFunction<? super T, ? super R1, ? extends MonadicValue<R2>> value2,
-                                                 Fn3<? super T, ? super R1, ? super R2, ? extends MonadicValue<R3>> value3,
-                                                 Fn4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
-                                                 Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                                 Function3<? super T, ? super R1, ? super R2, ? extends MonadicValue<R3>> value3,
+                                                 Function4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
+                                                 Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
 
         return (Try<R,X>)MonadicValue.super.forEach4(value1, value2, value3, filterFunction, yieldingFunction);
     }
@@ -592,7 +602,7 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     @Override
     public <T2, R1, R2, R> Try<R,X> forEach3(Function<? super T, ? extends MonadicValue<R1>> value1,
                                              BiFunction<? super T, ? super R1, ? extends MonadicValue<R2>> value2,
-                                             Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                             Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
 
         return (Try<R,X>)MonadicValue.super.forEach3(value1, value2, yieldingFunction);
     }
@@ -603,8 +613,8 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     @Override
     public <T2, R1, R2, R> Try<R,X> forEach3(Function<? super T, ? extends MonadicValue<R1>> value1,
                                              BiFunction<? super T, ? super R1, ? extends MonadicValue<R2>> value2,
-                                             Fn3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
-                                             Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                             Function3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
+                                             Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
 
         return (Try<R,X>)MonadicValue.super.forEach3(value1, value2, filterFunction, yieldingFunction);
     }
@@ -922,8 +932,8 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     }
 
     /**
-     * @param t Class type of match Exception against
-     * @param consumer Accept Exception if present (Failure) and if class types match
+     * @param t Class type of fold Exception against
+     * @param consumer Accept Exception if present (Failure) and if class types fold
      * @return this
      */
     public Try<T, X> onFail(Class<? extends X> t, Consumer<X> consumer){
@@ -934,7 +944,7 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     }
 
     /**
-     * @param fn Recovery function - map from a failure to a Success.
+     * @param fn Recovery function - transform from a failure to a Success.
      * @return new Try
      */
     public Try<T, X> recover(Function<? super X, ? extends T> fn){
@@ -960,9 +970,9 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
 
     /**
      * Recover if exception is of specified type
-     * @param t Type of exception to match against
+     * @param t Type of exception to fold against
      * @param fn Recovery function
-     * @return New Success if failure and types match / otherwise this
+     * @return New Success if failure and types fold / otherwise this
      */
     public Try<T, X> recoverFor(Class<? extends X> t, Function<? super X, ? extends T> fn){
         return new Try<T,X>(xor.secondaryToPrimayFlatMap(x->{
@@ -1137,6 +1147,11 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
                 (Class[]) classes);
     }
 
+    @Override
+    public <R> R fold(Function<? super T, ? extends R> fn1, Function<? super X, ? extends R> fn2) {
+        return isFailure() ? fn2.apply(this.failureGet()) : fn1.apply(get());
+    }
+
     @AllArgsConstructor
     static class MyInit<X extends Throwable> implements Init<X> {
         private final Class<X>[] classes;
@@ -1280,7 +1295,7 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
          *		   .tryWithResources(this::read2);
          *
          * private String read2(Tuple2&lt;BufferedReader,FileReader&gt; res) throws IOException{
-         * String line = res.v1.readLine();
+         * String line = res._1.readLine();
          *
          * </pre>
          *
@@ -1415,7 +1430,7 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.Zippable#zip(java.util.reactiveStream.Stream, java.util.function.BiFunction)
+     * @see com.aol.cyclops2.types.Zippable#zip(java.util.stream.Stream, java.util.function.BiFunction)
      */
     @Override
     public <U, R> Try<R, X> zipS(final Stream<? extends U> other, final BiFunction<? super T, ? super U, ? extends R> zipper) {
@@ -1424,7 +1439,7 @@ public class Try<T, X extends Throwable> implements  To<Try<T,X>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.Zippable#zip(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.Zippable#zip(java.util.stream.Stream)
      */
     @Override
     public <U> Try<Tuple2<T, U>, X> zipS(final Stream<? extends U> other) {

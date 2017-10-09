@@ -32,17 +32,16 @@ import cyclops.companion.Streams;
 import cyclops.control.Maybe;
 import cyclops.control.Trampoline;
 import cyclops.control.lazy.Either;
-import cyclops.function.Fn3;
-import cyclops.function.Fn4;
+import cyclops.function.Function3;
+import cyclops.function.Function4;
 import cyclops.function.Lambda;
 import cyclops.function.Monoid;
 import cyclops.monads.AnyM;
 import cyclops.monads.Witness;
 import lombok.val;
-import org.jooq.lambda.Seq;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -190,12 +189,12 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     @Override
-    default <S, U1, R> FutureStream<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U1> third, final Fn3<? super U, ? super S, ? super U1, ? extends R> fn3) {
+    default <S, U1, R> FutureStream<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U1> third, final Function3<? super U, ? super S, ? super U1, ? extends R> fn3) {
         return fromStream(stream().zip3(second,third,fn3));
     }
 
     @Override
-    default <T2, T3, T4, R> FutureStream<R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Fn4<? super U, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
+    default <T2, T3, T4, R> FutureStream<R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Function4<? super U, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
         return fromStream(stream().zip4(second,third,fourth,fn));
     }
 
@@ -258,7 +257,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     default <R1, R2, R3, R4> FutureStream<R4> parallelFanOutZipIn(ForkJoinPool fj, Function<? super Stream<U>, ? extends Stream<? extends R1>> path1,
                                                                   Function<? super Stream<U>, ? extends Stream<? extends R2>> path2,
                                                                   Function<? super Stream<U>, ? extends Stream<? extends R3>> path3,
-                                                                  Fn3<? super R1, ? super R2, ? super R3, ? extends R4> zipFn) {
+                                                                  Function3<? super R1, ? super R2, ? super R3, ? extends R4> zipFn) {
         return fromStream(stream().parallelFanOutZipIn(fj,path1, path2, path3,zipFn));
     }
 
@@ -266,7 +265,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     default <R1, R2, R3, R4> FutureStream<R4> fanOutZipIn(Function<? super ReactiveSeq<U>, ? extends ReactiveSeq<? extends R1>> path1,
                                                           Function<? super ReactiveSeq<U>, ? extends ReactiveSeq<? extends R2>> path2,
                                                           Function<? super ReactiveSeq<U>, ? extends ReactiveSeq<? extends R3>> path3,
-                                                          Fn3<? super R1, ? super R2, ? super R3, ? extends R4> zipFn) {
+                                                          Function3<? super R1, ? super R2, ? super R3, ? extends R4> zipFn) {
         return fromStream(stream().fanOutZipIn(path1, path2, path3,zipFn));
     }
 
@@ -291,7 +290,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
                                                               Function<? super ReactiveSeq<U>, ? extends ReactiveSeq<? extends R2>> path2,
                                                               Function<? super ReactiveSeq<U>, ? extends ReactiveSeq<? extends R3>> path3,
                                                               Function<? super ReactiveSeq<U>, ? extends ReactiveSeq<? extends R4>> path4,
-                                                              Fn4<? super R1, ? super R2, ? super R3, ? super R4, ? extends R5> zipFn) {
+                                                              Function4<? super R1, ? super R2, ? super R3, ? super R4, ? extends R5> zipFn) {
         return fromStream(stream().fanOutZipIn(path1, path2, path3,path4,zipFn));
     }
 
@@ -300,7 +299,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
                                                                       Function<? super Stream<U>, ? extends Stream<? extends R2>> path2,
                                                                       Function<? super Stream<U>, ? extends Stream<? extends R3>> path3,
                                                                       Function<? super Stream<U>, ? extends Stream<? extends R4>> path4,
-                                                                      Fn4<? super R1, ? super R2, ? super R3, ? super R4, ? extends R5> zipFn) {
+                                                                      Function4<? super R1, ? super R2, ? super R3, ? super R4, ? extends R5> zipFn) {
         return fromStream(stream().parallelFanOutZipIn(fj,path1, path2, path3,path4,zipFn));
     }
 
@@ -328,21 +327,10 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
         return this.getSimpleReact().fromStream(Stream.of(Lambda.λ(()->this.reduce(monoid))).map(Supplier::get));
     }
     
-    /* (non-Javadoc)
-     * @see org.jooq.lambda.Seq#crossApply(java.util.function.Function)
-     */
-    default <U1> FutureStream<Tuple2<U, U1>> crossApply(Function<? super U, ? extends Iterable<? extends U1>> function) {
-        return fromStream(ReactiveSeq.oneShotStream(stream()).seq().crossApply(function));
-    }
-    /* (non-Javadoc)
-     * @see org.jooq.lambda.Seq#outerApply(java.util.function.Function)
-     */
-    default <U1> FutureStream<Tuple2<U, U1>> outerApply(Function<? super U, ? extends Iterable<? extends U1>> function) {
-        return fromStream(ReactiveSeq.oneShotStream(stream()).seq().outerApply(function));
-    }
+
 
     /* (non-Javadoc)
-     * @see org.jooq.lambda.Seq#append(java.util.reactiveStream.Stream)
+     * @see org.jooq.lambda.Seq#append(java.util.stream.Stream)
      */
     @Override
     default FutureStream<U> appendS(Stream<? extends U> other) {
@@ -358,7 +346,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
 
 
     /* (non-Javadoc)
-     * @see org.jooq.lambda.Seq#prepend(java.util.reactiveStream.Stream)
+     * @see org.jooq.lambda.Seq#prepend(java.util.stream.Stream)
      */
     @Override
     default FutureStream<U> prependS(Stream<? extends U> other) {
@@ -425,7 +413,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * {@code 
      *   
      *      FutureStream.of(1,2,3)
-     *                      .map(i->i*2)
+     *                      .transform(i->i*2)
      *                      .coflatMap(s -> s.reduce(0,(a,b)->a+b))
      *      
      *      //FutureStream[12]
@@ -504,7 +492,8 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
     @Override
     default FutureStream<U> combine(final Monoid<U> op, final BiPredicate<? super U, ? super U> predicate) {
-        return (FutureStream<U>)ReactiveSeq.super.combine(op,predicate);
+        return this.fromStream(ReactiveSeq.oneShotStream(stream())
+                .combine(op,predicate));
     }
     /**
      * If this Stream is empty one it with a another Stream
@@ -535,8 +524,8 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     @Override
     default <R1, R2, R3, R> FutureStream<R> forEach4(Function<? super U, ? extends BaseStream<R1, ?>> stream1,
                                                      BiFunction<? super U, ? super R1, ? extends BaseStream<R2, ?>> stream2,
-                                                     Fn3<? super U, ? super R1, ? super R2, ? extends BaseStream<R3, ?>> stream3,
-                                                     Fn4<? super U, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                                     Function3<? super U, ? super R1, ? super R2, ? extends BaseStream<R3, ?>> stream3,
+                                                     Function4<? super U, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         
         return (FutureStream<R>)ReactiveSeq.super.forEach4(stream1, stream2, stream3, yieldingFunction);
     }
@@ -547,9 +536,9 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     @Override
     default <R1, R2, R3, R> FutureStream<R> forEach4(Function<? super U, ? extends BaseStream<R1, ?>> stream1,
                                                      BiFunction<? super U, ? super R1, ? extends BaseStream<R2, ?>> stream2,
-                                                     Fn3<? super U, ? super R1, ? super R2, ? extends BaseStream<R3, ?>> stream3,
-                                                     Fn4<? super U, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
-                                                     Fn4<? super U, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                                     Function3<? super U, ? super R1, ? super R2, ? extends BaseStream<R3, ?>> stream3,
+                                                     Function4<? super U, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
+                                                     Function4<? super U, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         
         return (FutureStream<R>)ReactiveSeq.super.forEach4(stream1, stream2, stream3, filterFunction, yieldingFunction);
     }
@@ -560,7 +549,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     @Override
     default <R1, R2, R> FutureStream<R> forEach3(Function<? super U, ? extends BaseStream<R1, ?>> stream1,
                                                  BiFunction<? super U, ? super R1, ? extends BaseStream<R2, ?>> stream2,
-                                                 Fn3<? super U, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                                 Function3<? super U, ? super R1, ? super R2, ? extends R> yieldingFunction) {
         
         return (FutureStream<R>)ReactiveSeq.super.forEach3(stream1, stream2, yieldingFunction);
     }
@@ -571,8 +560,8 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     @Override
     default <R1, R2, R> FutureStream<R> forEach3(Function<? super U, ? extends BaseStream<R1, ?>> stream1,
                                                  BiFunction<? super U, ? super R1, ? extends BaseStream<R2, ?>> stream2,
-                                                 Fn3<? super U, ? super R1, ? super R2, Boolean> filterFunction,
-                                                 Fn3<? super U, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                                 Function3<? super U, ? super R1, ? super R2, Boolean> filterFunction,
+                                                 Function3<? super U, ? super R1, ? super R2, ? extends R> yieldingFunction) {
         
         return (FutureStream<R>)ReactiveSeq.super.forEach3(stream1, stream2, filterFunction, yieldingFunction);
     }
@@ -843,7 +832,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     /*
      * (non-Javadoc)
      *
-     * @see java.util.reactiveStream.Stream#count()
+     * @see java.util.stream.Stream#count()
      */
     @Override
     default long count() {
@@ -858,9 +847,9 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * <pre>
      * {@code
      *  FutureStream.of(1,2,3,4)
-     *  					.map(this::loadFromDb)
+     *  					.transform(this::loadFromDb)
      *  					.withTaskExecutor(parallelBuilder().getExecutor())
-     *  					.map(this::processOnDifferentExecutor)
+     *  					.transform(this::processOnDifferentExecutor)
      *  					.toList();
      * }
      * </pre>
@@ -952,10 +941,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
         return fromStream(ReactiveSeq.super.parallel(fn));
 
     }
-    @Override
-    default <R> FutureStream<R> jool(Function<? super Seq<U>, ? extends Seq<R>> mapper){
-        return fromStream(ReactiveSeq.super.jool(mapper));
-    }
+
 
     @Override
     default <T> T reduce(final T identity, final BiFunction<T, ? super U, T> accumulator) {
@@ -965,7 +951,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     /*
      * (non-Javadoc)
      *
-     * @see java.util.reactiveStream.Stream#reduce(java.lang.Object,
+     * @see java.util.stream.Stream#reduce(java.lang.Object,
      * java.util.function.BinaryOperator)
      */
     @Override
@@ -1027,8 +1013,8 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * <pre>
      * {@code
      * FutureStream reactiveStream = of(1,2,3,4).async()
-     *                                      .map(this::doWorkOnSeparateThreads)
-     *                                      .map(this::resubmitTaskForDistribution)
+     *                                      .transform(this::doWorkOnSeparateThreads)
+     *                                      .transform(this::resubmitTaskForDistribution)
      *                                      .forEach(System.out::println);
      *
      * }</pre>
@@ -1080,7 +1066,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      *    	List<String> data = new LazyReact().react(urlFile)
      *    										.maxActive(100)
      *    										.flatMap(this::loadUrls)
-     *    										.map(this::callUrls)
+     *    										.transform(this::callUrls)
      *    										.block();
      *    }
      * </pre>
@@ -1091,9 +1077,9 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     public FutureStream<U> maxActive(int concurrentTasks);
 
     /*
-     * Equivalent functionally to map / applyHKT but always applied on the completing thread (from the previous stage)
+     * Equivalent functionally to transform / applyHKT but always applied on the completing thread (from the previous stage)
      *
-     * When autoOptimize functionality is enabled, thenSync is the default behaviour for applyHKT / map operations
+     * When autoOptimize functionality is enabled, thenSync is the default behaviour for applyHKT / transform operations
      *
      * <pre>
      * {@code
@@ -1119,7 +1105,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * {@code
      * new LazyReact().withAutoOptimize(false)
      *                .of(1,2,3,4)
-                      .map(this::performIO)
+                      .transform(this::performIO)
                       .peekSync(this::cpuBoundTaskNoResult)
                       .run();
      *
@@ -1209,14 +1195,14 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * <pre>
      * {@code
      *  LazyReact.sequentialBuilder().react(()->1,()->2,()->3)
-                                             .map(it->it+100) //add 100
+                                             .transform(it->it+100) //add 100
                                              .toList();
      * }
      * //results in [100,200,300]
      * </pre>
      *	@param mapper Function to be applied to all items in the Stream
      *	@return
-     * @see com.aol.cyclops2.react.reactiveStream.traits.FutureStream#map(java.util.function.Function)
+     * @see com.aol.cyclops2.react.reactiveStream.traits.FutureStream#transform(java.util.function.Function)
      */
     @Override
     default <R> FutureStream<R> map(final Function<? super U, ? extends R> mapper) {
@@ -1398,7 +1384,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      *
      * FutureStream.parallelCommonBuilder()
      * 						.of(IntStream.range(0, 100))
-     * 						.map(it -> it*100)
+     * 						.transform(it -> it*100)
      * 						.jitter(10l)
      * 						.peek(System.out::println)
      * 						.block();
@@ -1589,7 +1575,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
 
     /*
      * Non-blocking asyncrhonous application of the supplied function.
-     * Equivalent to map from Streams / Seq apis.
+     * Equivalent to transform from Streams / Seq apis.
      *
      * @param fn Function to be applied asynchronously
      *
@@ -1610,7 +1596,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * <pre>
      * {@code
      * FutureStream.of(1,2,3,4,5,6)
-                .map(i->i+2)
+                .transform(i->i+2)
                 .copy(5)
                 .forEach(s -> System.out.println(s.toList()));
      *
@@ -1667,7 +1653,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     default <R> FutureStream<R> mergeLatest(final FutureStream<?>... streams) {
         final Queue queue = Queue.createMergeQueue();
         addToQueue(queue);
-        Seq.of(streams)
+        ReactiveSeq.of(streams)
            .forEach(s -> s.addToQueue(queue));
 
         return fromStream(queue.stream(this.getSubscription()));
@@ -1833,7 +1819,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
          * Convert the specified Stream to a FutureStream, using the configuration
          * of this FutureStream (task executors, current config settings)
          *
-         * @see com.aol.cyclops2.react.reactiveStream.traits.SimpleReactStream#fromStream(java.util.reactiveStream.Stream)
+         * @see com.aol.cyclops2.react.reactiveStream.traits.SimpleReactStream#fromStream(java.util.stream.Stream)
          */
     @Override
     default <R> FutureStream<R> fromStream(final Stream<R> stream) {
@@ -1848,7 +1834,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      *
      * @see
      * com.aol.simple.react.reactiveStream.FutureStreamImpl#fromStreamCompletableFuture
-     * (java.util.reactiveStream.Stream)
+     * (java.util.stream.Stream)
      */
 
     default <R> FutureStream<R> fromStreamOfFutures(final Stream<FastFuture<R>> stream) {
@@ -2142,7 +2128,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     default Tuple2<FutureStream<U>, FutureStream<U>> duplicateFutureStream() {
         final Tuple2<ReactiveSeq<U>, ReactiveSeq<U>> duplicated = this.duplicate();
         return new Tuple2(
-                          fromStream(duplicated.v1), fromStream(duplicated.v2));
+                          fromStream(duplicated._1()), fromStream(duplicated._2()));
     }
 
 
@@ -2187,7 +2173,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     default Tuple2<FutureStream<U>, FutureStream<U>> partitionFutureStream(final Predicate<? super U> predicate) {
         final Tuple2<ReactiveSeq<U>, ReactiveSeq<U>> partition = partition(predicate);
         return new Tuple2(
-                          fromStream(partition.v1), fromStream(partition.v2));
+                          fromStream(partition._1()), fromStream(partition._2()));
     }
 
     /*
@@ -2388,18 +2374,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
         return fromStream(LazyFutureStreamFunctions.limitUntil(this, predicate));
     }
 
-    /**
-     * Cross join 2 streams into one.
-     * <p>
-     * <pre>{@code
-     * // (tuple(1, "a"), tuple(1, "b"), tuple(2, "a"), tuple(2, "b"))
-     * FutureStream.of(1, 2).crossJoin(FutureStream.of("a", "b"))
-     * }</pre>
-     */
-    default <T> FutureStream<Tuple2<U, T>> crossJoin(final ReactiveSeq<? extends T> other) {
-        return fromStream(ReactiveSeq.oneShotStream(stream()).seq()
-                                     .crossJoin((Stream<T>)other));
-    }
+
 
     /**
      * Produce this reactiveStream, or an alternative reactiveStream from the
@@ -2458,48 +2433,8 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
         return fromStream(ReactiveSeq.oneShotStream(stream()).onEmptyThrow(supplier));
     }
 
-    /**
-     * Inner join 2 streams into one.
-     *
-     * <pre>
-     * {@code
-     * // (tuple(1, 1), tuple(2, 2))
-     * FutureStream.of(1, 2, 3).innerJoin(Seq.of(1, 2), t -> Objects.equals(t.v1, t.v2))
-     * }</pre>
-     */
-    default <T> FutureStream<Tuple2<U, T>> innerJoin(final Stream<? extends T> other, final BiPredicate<? super U, ? super T> predicate) {
-        return fromStream(ReactiveSeq.oneShotStream(stream()).seq()
-                                     .innerJoin(other, predicate));
 
-    }
 
-    /**
-     * Left outer join 2 streams into one.
-     * <p>
-     * <pre>
-     * {@code
-     * // (tuple(1, 1), tuple(2, 2), tuple(3, null))
-     * FutureStream.of(1, 2, 3).leftOuterJoin(Seq.of(1, 2), t -> Objects.equals(t.v1, t.v2))
-     * }</pre>
-     */
-    default <T> FutureStream<Tuple2<U, T>> leftOuterJoin(final Stream<? extends T> other, final BiPredicate<? super U, ? super T> predicate) {
-        return fromStream(ReactiveSeq.oneShotStream(stream()).seq()
-                                     .leftOuterJoin(other, predicate));
-    }
-
-    /**
-     * Right outer join 2 streams into one.
-     * <p>
-     * <pre>
-     * {@code
-     * // (tuple(1, 1), tuple(2, 2), tuple(null, 3))
-     * FutureStream.of(1, 2).rightOuterJoin(Seq.of(1, 2, 3), t -> Objects.equals(t.v1, t.v2))
-     * }</pre>
-     */
-    default <T> FutureStream<Tuple2<U, T>> rightOuterJoin(final Stream<? extends T> other, final BiPredicate<? super U, ? super T> predicate) {
-        return fromStream(ReactiveSeq.oneShotStream(stream()).seq()
-                                     .rightOuterJoin(other, predicate));
-    }
 
     /**
      * Create a Stream that infinitely cycles this Stream
@@ -2731,7 +2666,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#mapToInt(java.util.function.ToIntFunction)
+     * @see java.util.stream.Stream#mapToInt(java.util.function.ToIntFunction)
      */
     @Override
     default IntStream mapToInt(final ToIntFunction<? super U> mapper) {
@@ -2739,7 +2674,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#mapToLong(java.util.function.ToLongFunction)
+     * @see java.util.stream.Stream#mapToLong(java.util.function.ToLongFunction)
      */
     @Override
     default LongStream mapToLong(final ToLongFunction<? super U> mapper) {
@@ -2747,7 +2682,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#mapToDouble(java.util.function.ToDoubleFunction)
+     * @see java.util.stream.Stream#mapToDouble(java.util.function.ToDoubleFunction)
      */
     @Override
     default DoubleStream mapToDouble(final ToDoubleFunction<? super U> mapper) {
@@ -2755,7 +2690,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#flatMapToInt(java.util.function.Function)
+     * @see java.util.stream.Stream#flatMapToInt(java.util.function.Function)
      */
     @Override
     default IntStream flatMapToInt(final Function<? super U, ? extends IntStream> mapper) {
@@ -2763,7 +2698,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#flatMapToLong(java.util.function.Function)
+     * @see java.util.stream.Stream#flatMapToLong(java.util.function.Function)
      */
     @Override
     default LongStream flatMapToLong(final Function<? super U, ? extends LongStream> mapper) {
@@ -2771,7 +2706,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#flatMapToDouble(java.util.function.Function)
+     * @see java.util.stream.Stream#flatMapToDouble(java.util.function.Function)
      */
     @Override
     default DoubleStream flatMapToDouble(final Function<? super U, ? extends DoubleStream> mapper) {
@@ -2779,7 +2714,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#forEachOrdered(java.util.function.Consumer)
+     * @see java.util.stream.Stream#forEachOrdered(java.util.function.Consumer)
      */
     @Override
     default void forEachOrdered(final Consumer<? super U> action) {
@@ -2788,7 +2723,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#toArray()
+     * @see java.util.stream.Stream#toArray()
      */
     @Override
     default Object[] toArray() {
@@ -2796,7 +2731,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see java.util.reactiveStream.Stream#toArray(java.util.function.IntFunction)
+     * @see java.util.stream.Stream#toArray(java.util.function.IntFunction)
      */
     @Override
     default <A> A[] toArray(final IntFunction<A[]> generator) {
@@ -2987,7 +2922,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see cyclops2.reactiveStream.ReactiveSeq#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see cyclops2.reactiveStream.ReactiveSeq#zip3(java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <S, R> FutureStream<Tuple3<U, S, R>> zip3(final Iterable<? extends S> second, final Iterable<? extends R> third) {
@@ -2997,7 +2932,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see cyclops2.reactiveStream.ReactiveSeq#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see cyclops2.reactiveStream.ReactiveSeq#zip4(java.util.stream.Stream, java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <T2, T3, T4> FutureStream<Tuple4<U, T2, T3, T4>> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third,
@@ -3058,7 +2993,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see cyclops2.reactiveStream.ReactiveSeq#endsWith(java.util.reactiveStream.Stream)
+     * @see cyclops2.reactiveStream.ReactiveSeq#endsWith(java.util.stream.Stream)
      */
     @Override
     default boolean endsWith(final Stream<U> stream) {
@@ -3150,7 +3085,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /*
-     * @see cyclops2.reactiveStream.ReactiveSeq#insertAtS(int, java.util.reactiveStream.Stream)
+     * @see cyclops2.reactiveStream.ReactiveSeq#insertAtS(int, java.util.stream.Stream)
      */
     @Override
     default FutureStream<U> insertAtS(final int pos, final Stream<U> stream) {
@@ -3349,17 +3284,17 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     @Override
     default <X extends Throwable> Subscription forEach(final long numberOfElements, final Consumer<? super U> consumer) {
         Tuple3<CompletableFuture<Subscription>, Runnable, CompletableFuture<Boolean>> t2 = LazyFutureStreamUtils.forEachX(this, numberOfElements, consumer);
-        t2.v2.run();
-        return t2.v1.join();
+        t2._2().run();
+        return t2._1().join();
     }
 
     /**
-     * Perform a forEach operation over the Stream  without closing it,  capturing any elements and errors in the supplied consumers, but only consuming 
-     * the specified number of elements from the Stream, at this time. More elements can be consumed later, by called request on the returned Subscription 
+     * Perform a forEach operation over the Stream  without closing it,  capturing any elements and errors in the supplied consumers, but only consuming
+     * the specified number of elements from the Stream, at this time. More elements can be consumed later, by called request on the returned Subscription
      * <pre>
      * {@code
      *     Subscription next = FutureStream.of(()->1,()->2,()->{throw new RuntimeException()},()->4)
-     *                                  .map(Supplier::get)
+     *                                  .transform(Supplier::get)
      *          					    .forEach(2,System.out::println, e->e.printStackTrace());
      *          
      *     System.out.println("First batch processed!");
@@ -3390,19 +3325,19 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     default <X extends Throwable> Subscription forEach(final long numberOfElements, final Consumer<? super U> consumer,
                                                        final Consumer<? super Throwable> consumerError) {
         Tuple3<CompletableFuture<Subscription>, Runnable, CompletableFuture<Boolean>> t2 = LazyFutureStreamUtils.forEachXWithError(this, numberOfElements, consumer, consumerError);
-        t2.v2.run();
-        return t2.v1.join();
+        t2._2().run();
+        return t2._1().join();
     }
 
     /**
-     * Perform a forEach operation over the Stream  without closing it,  capturing any elements and errors in the supplied consumers, but only consuming 
+     * Perform a forEach operation over the Stream  without closing it,  capturing any elements and errors in the supplied consumers, but only consuming
      * the specified number of elements from the Stream, at this time. More elements can be consumed later, by called request on the returned Subscription,
      * when the entire Stream has been processed an onComplete event will be recieved.
      * 
      * <pre>
      * {@code
      *     Subscription next = LazyFurtureStream.of(()->1,()->2,()->{throw new RuntimeException()},()->4)
-     *                                  .map(Supplier::get)
+     *                                  .transform(Supplier::get)
      *          					    .forEach(2,System.out::println, e->e.printStackTrace(),()->System.out.println("the take!"));
      *          
      *     System.out.println("First batch processed!");
@@ -3433,16 +3368,16 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     default <X extends Throwable> Subscription forEach(final long numberOfElements, final Consumer<? super U> consumer,
                                                        final Consumer<? super Throwable> consumerError, final Runnable onComplete) {
         val t2 = LazyFutureStreamUtils.forEachXEvents(this, numberOfElements, consumer, consumerError, onComplete);
-        t2.v2.run();
-        return t2.v1.join();
+        t2._2().run();
+        return t2._1().join();
     }
 
     /**
-     *  Perform a forEach operation over the Stream    capturing any elements and errors in the supplied consumers,  
+     *  Perform a forEach operation over the Stream    capturing any elements and errors in the supplied consumers,
      * <pre>
      * {@code
      *     Subscription next = FutureStream.of(()->1,()->2,()->{throw new RuntimeException()},()->4)
-     *                                  .map(Supplier::get)
+     *                                  .transform(Supplier::get)
      *          					    .forEach(System.out::println, e->e.printStackTrace());
      *          
      *     System.out.println("processed!");
@@ -3464,7 +3399,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     @Override
     default <X extends Throwable> void forEach(final Consumer<? super U> consumerElement, final Consumer<? super Throwable> consumerError) {
         val t2 = LazyFutureStreamUtils.forEachWithError(this, consumerElement, consumerError);
-        t2.v2.run();
+        t2._2().run();
     }
 
     /**
@@ -3474,7 +3409,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * <pre>
      * {@code
      *     Subscription next = FutureStream.of(()->1,()->2,()->{throw new RuntimeException()},()->4)
-     *                                  .map(Supplier::get)
+     *                                  .transform(Supplier::get)
      *          					    .forEachEvents(System.out::println, e->e.printStackTrace(),()->System.out.println("the take!"));
      *          
      *     System.out.println("processed!");
@@ -3498,7 +3433,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     default <X extends Throwable> void forEach(final Consumer<? super U> consumerElement, final Consumer<? super Throwable> consumerError,
                                                final Runnable onComplete) {
         val t2 = LazyFutureStreamUtils.forEachEvent(this, consumerElement, consumerError, onComplete);
-        t2.v2.run();
+        t2._2().run();
     }
 
     @Override

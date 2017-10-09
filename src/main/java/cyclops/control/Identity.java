@@ -1,9 +1,13 @@
 package cyclops.control;
 
 import com.aol.cyclops2.hkt.Higher;
+import com.aol.cyclops2.matching.Deconstruct;
 import com.aol.cyclops2.types.MonadicValue;
 import com.aol.cyclops2.types.anyM.AnyMValue;
 import cyclops.async.Future;
+import cyclops.collections.mutable.ListX;
+import cyclops.collections.tuple.Tuple;
+import cyclops.collections.tuple.Tuple1;
 import cyclops.function.Monoid;
 import cyclops.monads.AnyM;
 import cyclops.monads.Witness;
@@ -25,9 +29,23 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Identity<T> implements Higher<identity,T>, Iterable<T> {
+public class Identity<T> implements Higher<identity,T>, Iterable<T>, Deconstruct.Deconstruct1<T>{
     private final T value;
 
+
+    public static  <T,R> Identity<R> tailRec(T initial, Function<? super T, ? extends Identity<? extends Xor<T, R>>> fn){
+        Identity<? extends Xor<T, R>> next[] = new Identity[1];
+        next[0] = Identity.of(Xor.secondary(initial));
+        boolean cont = true;
+        do {
+
+            cont = next[0].visit(p -> p.visit(s -> {
+                next[0] = narrowK(fn.apply(s));
+                return true;
+            }, __ -> false));
+        } while (cont);
+        return next[0].map(Xor::get);
+    }
     public static <T> Identity<T> of(T value){
          return new Identity<>(value);
      }
@@ -63,6 +81,14 @@ public class Identity<T> implements Higher<identity,T>, Iterable<T> {
         return narrow(fn.apply(value));
     }
 
+    public Tuple1<T> toTuple(){
+        return Tuple1.of(value);
+    }
+
+    public Tuple1<T> toLazyTuple(){
+        return Tuple1.lazy(()->value);
+    }
+
     public AnyMValue<identity,T> anyM(){
         return AnyM.fromIdentity(this);
     }
@@ -85,6 +111,11 @@ public class Identity<T> implements Higher<identity,T>, Iterable<T> {
     @Override
     public Iterator<T> iterator() {
         return Arrays.asList(value).iterator();
+    }
+
+    @Override
+    public Tuple1<T> unapply() {
+        return Tuple.tuple(value);
     }
 
     public static class Instances{
@@ -226,17 +257,7 @@ public class Identity<T> implements Higher<identity,T>, Iterable<T> {
             return new MonadRec<identity>(){
                 @Override
                 public <T, R> Higher<identity, R> tailRec(T initial, Function<? super T, ? extends Higher<identity, ? extends Xor<T, R>>> fn) {
-                    Identity<? extends Xor<T, R>> next[] = new Identity[1];
-                    next[0] = Identity.of(Xor.secondary(initial));
-                    boolean cont = true;
-                    do {
-
-                        cont = next[0].visit(p -> p.visit(s -> {
-                            next[0] = narrowK(fn.apply(s));
-                            return true;
-                        }, __ -> false));
-                    } while (cont);
-                    return next[0].map(Xor::get);
+                   return Identity.tailRec(initial,fn.andThen(Identity::narrowK));
                 }
 
 

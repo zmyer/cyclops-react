@@ -8,25 +8,23 @@ import com.aol.cyclops2.types.recoverable.OnEmptySwitch;
 import com.aol.cyclops2.types.foldable.To;
 import com.aol.cyclops2.types.anyM.AnyMSeq;
 import cyclops.async.Future;
-import cyclops.collections.mutable.DequeX;
 import cyclops.companion.Reducers;
 import cyclops.collections.mutable.ListX;
 import cyclops.control.Trampoline;
 import cyclops.control.Xor;
-import cyclops.function.Fn3;
-import cyclops.function.Fn4;
+import cyclops.function.Function3;
+import cyclops.function.Function4;
 import cyclops.function.Monoid;
 import cyclops.function.Reducer;
 import cyclops.monads.AnyM;
 import cyclops.monads.Witness.bagX;
 import cyclops.stream.ReactiveSeq;
 import cyclops.stream.Spouts;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.pcollections.HashTreePBag;
 import org.pcollections.PBag;
-import org.pcollections.PStack;
 import org.reactivestreams.Publisher;
 
 import java.lang.reflect.InvocationHandler;
@@ -35,14 +33,13 @@ import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.*;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 
 /**
  *
  * A Lazy and Reactive Wrapper for Pesistent Bags (immutable collections like Sets that can contain duplicates).
- * BagX is lazy - chainging functional operations such as map / filter / flatMap only results in the toX
+ * BagX is lazy - chainging functional operations such as transform / filter / flatMap only results in the toX
  * being traversed once. It is materialized and cached on first access (or via {@link BagX#materialize()}
  *
  * It is also possible to populate BagX asynchronously using reactiveBuffer-streams publishers such as those created via the
@@ -189,8 +186,8 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     @Override
     default <R1, R2, R3, R> BagX<R> forEach4(Function<? super T, ? extends Iterable<R1>> stream1,
                                              BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
-                                             Fn3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
-                                             Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                             Function3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
+                                             Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         
         return (BagX)LazyCollectionX.super.forEach4(stream1, stream2, stream3, yieldingFunction);
     }
@@ -201,9 +198,9 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     @Override
     default <R1, R2, R3, R> BagX<R> forEach4(Function<? super T, ? extends Iterable<R1>> stream1,
                                              BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
-                                             Fn3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
-                                             Fn4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
-                                             Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                             Function3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
+                                             Function4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
+                                             Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         
         return (BagX)LazyCollectionX.super.forEach4(stream1, stream2, stream3, filterFunction, yieldingFunction);
     }
@@ -214,7 +211,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     @Override
     default <R1, R2, R> BagX<R> forEach3(Function<? super T, ? extends Iterable<R1>> stream1,
                                          BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
-                                         Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                         Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
         
         return (BagX)LazyCollectionX.super.forEach3(stream1, stream2, yieldingFunction);
     }
@@ -225,8 +222,8 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     @Override
     default <R1, R2, R> BagX<R> forEach3(Function<? super T, ? extends Iterable<R1>> stream1,
                                          BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
-                                         Fn3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
-                                         Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                         Function3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
+                                         Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
         
         return (BagX)LazyCollectionX.super.forEach3(stream1, stream2, filterFunction, yieldingFunction);
     }
@@ -344,7 +341,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
      * {@code 
      *   
      *     BagX.of(1,2,3)
-     *          .map(i->i*2)
+     *          .transform(i->i*2)
      *          .coflatMap(s -> s.reduce(0,(a,b)->a+b))
      *      
      *      //BagX[12]
@@ -479,7 +476,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#map(java.util.function.Function)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#transform(java.util.function.Function)
      */
     @Override
     default <R> BagX<R> map(final Function<? super T, ? extends R> mapper) {
@@ -581,15 +578,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
         return (BagX<ListX<T>>) LazyCollectionX.super.grouped(groupSize);
     }
 
-    @Override
-    default <K, A, D> BagX<Tuple2<K, D>> grouped(final Function<? super T, ? extends K> classifier, final Collector<? super T, A, D> downstream) {
-        return (BagX) LazyCollectionX.super.grouped(classifier, downstream);
-    }
 
-    @Override
-    default <K> BagX<Tuple2<K, ReactiveSeq<T>>> grouped(final Function<? super T, ? extends K> classifier) {
-        return (BagX) LazyCollectionX.super.grouped(classifier);
-    }
 
     @Override
     default <U> BagX<Tuple2<T, U>> zip(final Iterable<? extends U> other) {
@@ -716,7 +705,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip(java.util.stream.Stream)
      */
     @Override
     default <U> BagX<Tuple2<T, U>> zipS(final Stream<? extends U> other) {
@@ -726,7 +715,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip3(java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <S, U> BagX<Tuple3<T, S, U>> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third) {
@@ -735,7 +724,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip4(java.util.stream.Stream, java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <T2, T3, T4> BagX<Tuple4<T, T2, T3, T4>> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third,
@@ -926,7 +915,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#removeAll(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#removeAll(java.util.stream.Stream)
      */
     @Override
     default BagX<T> removeAllS(final Stream<? extends T> stream) {
@@ -962,7 +951,7 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#retainAllI(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#retainAllI(java.util.stream.Stream)
      */
     @Override
     default BagX<T> retainAllS(final Stream<? extends T> seq) {
@@ -1135,8 +1124,6 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
         return (BagX<R>)LazyCollectionX.super.zipP(publisher,fn);
     }
 
-
-
     @Override
     default <U> BagX<Tuple2<T, U>> zipP(final Publisher<? extends U> other) {
         return (BagX)LazyCollectionX.super.zipP(other);
@@ -1144,12 +1131,12 @@ public interface BagX<T> extends To<BagX<T>>,PBag<T>, LazyCollectionX<T>, OnEmpt
 
 
     @Override
-    default <S, U, R> BagX<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Fn3<? super T, ? super S, ? super U, ? extends R> fn3) {
+    default <S, U, R> BagX<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Function3<? super T, ? super S, ? super U, ? extends R> fn3) {
         return (BagX<R>)LazyCollectionX.super.zip3(second,third,fn3);
     }
 
     @Override
-    default <T2, T3, T4, R> BagX<R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Fn4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
+    default <T2, T3, T4, R> BagX<R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Function4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
         return (BagX<R>)LazyCollectionX.super.zip4(second,third,fourth,fn);
     }
 

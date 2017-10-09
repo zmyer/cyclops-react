@@ -9,6 +9,8 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import com.aol.cyclops2.data.collections.extensions.IndexedSequenceX;
+import com.aol.cyclops2.types.foldable.Folds;
+import com.aol.cyclops2.types.traversable.FoldableTraversable;
 import cyclops.monads.AnyM;
 import cyclops.async.Future;
 import cyclops.monads.WitnessType;
@@ -17,7 +19,7 @@ import cyclops.monads.transformers.FutureT;
 import cyclops.monads.transformers.ListT;
 import cyclops.collections.mutable.ListX;
 import cyclops.collections.mutable.SetX;
-import com.aol.cyclops2.types.foldable.CyclopsCollectable;
+
 
 /**
  * Interface for manipulating monads nested inside monad transformers
@@ -27,7 +29,7 @@ import com.aol.cyclops2.types.foldable.CyclopsCollectable;
  * @param <T> Data type of the elements in the nested Monad
  */
 public interface NestedCollectable<W extends WitnessType<W>,T> {
-    public AnyM<W,? extends CyclopsCollectable<T>> nestedCollectables();
+    public AnyM<W,? extends FoldableTraversable<T>> nestedCollectables();
 
     
     /**
@@ -73,7 +75,7 @@ public interface NestedCollectable<W extends WitnessType<W>,T> {
      * </pre>
      * 
      * @param c
-     *            Predicate to check if all match
+     *            Predicate to check if all fold
      */
     default AnyM<W,Boolean> allMatch(final Predicate<? super T> c) {
         return nestedCollectables().map(s -> s.allMatch(c));
@@ -89,16 +91,16 @@ public interface NestedCollectable<W extends WitnessType<W>,T> {
      * </pre>
      * 
      * @param c
-     *            Predicate to check if any match
+     *            Predicate to check if any fold
      */
     default AnyM<W,Boolean> anyMatch(final Predicate<? super T> c) {
         return nestedCollectables().map(s -> s.anyMatch(c));
     }
 
     /**
-     * Reduce each nested monad to a boolean value - true if the predicates match none of it's elements, otherwise false
+     * Reduce each nested monad to a boolean value - true if the predicates fold none of it's elements, otherwise false
      * 
-     * @param c  Predicate to check if no match
+     * @param c  Predicate to check if no fold
      * @return Monad of booleans wrapped inside an AnyM
      */
     default AnyM<W,Boolean> noneMatch(final Predicate<? super T> c) {

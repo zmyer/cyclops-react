@@ -1,29 +1,26 @@
 package com.aol.cyclops2.data.collections.extensions;
 
-import com.aol.cyclops2.hkt.Higher;
 import com.aol.cyclops2.types.factory.Unit;
 import com.aol.cyclops2.types.foldable.Evaluation;
 import com.aol.cyclops2.types.traversable.FoldableTraversable;
 import cyclops.collections.immutable.VectorX;
 import cyclops.control.Maybe;
 import cyclops.function.Monoid;
-import cyclops.monads.Witness;
 import cyclops.stream.ReactiveSeq;
 import cyclops.control.Trampoline;
 import cyclops.collections.mutable.ListX;
 import cyclops.collections.mutable.MapX;
 import com.aol.cyclops2.types.*;
 import com.aol.cyclops2.types.stream.HeadAndTail;
-import cyclops.function.Fn3;
-import cyclops.function.Fn4;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+import cyclops.function.Function3;
+import cyclops.function.Function4;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.reactivestreams.Publisher;
 
 import java.util.*;
 import java.util.function.*;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 /**
@@ -131,13 +128,13 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
     CollectionX<T> shuffle(Random random);
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip3(java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     <S, U> CollectionX<Tuple3<T, S, U>> zip3(Iterable<? extends S> second, Iterable<? extends U> third);
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip4(java.util.stream.Stream, java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     <T2, T3, T4> CollectionX<Tuple4<T, T2, T3, T4>> zip4(Iterable<? extends T2> second, Iterable<? extends T3> third, Iterable<? extends T4> fourth);
@@ -253,6 +250,7 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
         return stream().get(index);
     }
 
+
     /* (non-Javadoc)
      * @see com.aol.cyclops2.types.foldable.Folds#headAndTail()
      */
@@ -353,7 +351,7 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
     CollectionX<T> filter(Predicate<? super T> pred);
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.IterableFunctor#map(java.util.function.Function)
+     * @see com.aol.cyclops2.types.IterableFunctor#transform(java.util.function.Function)
      */
     @Override
     <R> CollectionX<R> map(Function<? super T, ? extends R> mapper);
@@ -437,17 +435,6 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
     @Override
     CollectionX<ListX<T>> grouped(int groupSize);
 
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#grouped(java.util.function.Function, java.util.reactiveStream.Collector)
-     */
-    @Override
-    <K, A, D> CollectionX<Tuple2<K, D>> grouped(Function<? super T, ? extends K> classifier, Collector<? super T, A, D> downstream);
-
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#grouped(java.util.function.Function)
-     */
-    @Override
-    <K> CollectionX<Tuple2<K, ReactiveSeq<T>>> grouped(Function<? super T, ? extends K> classifier);
 
     /* (non-Javadoc)
      * @see com.aol.cyclops2.types.traversable.Traversable#combine(java.util.function.BiPredicate, java.util.function.BinaryOperator)
@@ -473,13 +460,13 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.reactiveStream.Stream, java.util.function.BiFunction)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.stream.Stream, java.util.function.BiFunction)
      */
     @Override
     <U, R> CollectionX<R> zipS(Stream<? extends U> other, BiFunction<? super T, ? super U, ? extends R> zipper);
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.stream.Stream)
      */
     @Override
     <U> CollectionX<Tuple2<T, U>> zipS(Stream<? extends U> other);
@@ -539,7 +526,7 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
     CollectionX<T> sorted();
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.IterableFilterable#removeAll(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.IterableFilterable#removeAll(java.util.stream.Stream)
      */
     @Override
     CollectionX<T> removeAllS(Stream<? extends T> stream);
@@ -563,7 +550,7 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.IterableFilterable#retainAllI(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.IterableFilterable#retainAllI(java.util.stream.Stream)
      */
     @Override
     CollectionX<T> retainAllS(Stream<? extends T> seq);
@@ -620,8 +607,8 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
      */
     default <R1, R2, R3,R> CollectionX<R> forEach4(final Function<? super T, ? extends Iterable<R1>> iterable1,
                         final BiFunction<? super T,? super R1, ? extends Iterable<R2>> iterable2,
-                            final Fn3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> iterable3,
-                            final Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                            final Function3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> iterable3,
+                            final Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         return this.flatMap(in -> {
 
             ReactiveSeq<R1> a = ReactiveSeq.fromIterable(iterable1.apply(in));
@@ -674,9 +661,9 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
      */
     default <R1, R2, R3, R> CollectionX<R> forEach4(final Function<? super T, ? extends Iterable<R1>> iterable1,
             final BiFunction<? super T, ? super R1, ? extends Iterable<R2>> iterable2,
-            final Fn3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> iterable3,
-            final Fn4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
-            final Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+            final Function3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> iterable3,
+            final Function4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
+            final Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         return this.flatMap(in -> {
 
             ReactiveSeq<R1> a = ReactiveSeq.fromIterable(iterable1.apply(in));
@@ -722,7 +709,7 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
      */
     default <R1, R2, R> CollectionX<R> forEach3(final Function<? super T, ? extends Iterable<R1>> iterable1,
                                                 final BiFunction<? super T,? super R1, ? extends Iterable<R2>> iterable2,
-                                                final Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                                final Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
         return this.flatMap(in -> {
 
             Iterable<R1> a = iterable1.apply(in);
@@ -769,8 +756,8 @@ public interface CollectionX<T> extends FoldableTraversable<T>,
      */
     default <R1, R2, R> CollectionX<R> forEach3(final Function<? super T, ? extends Iterable<R1>> iterable1,
             final BiFunction<? super T,? super R1, ? extends Iterable<R2>> iterable2,
-                    final Fn3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
-                    final Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                    final Function3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
+                    final Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
         return this.flatMap(in -> {
 
             Iterable<R1> a = iterable1.apply(in);

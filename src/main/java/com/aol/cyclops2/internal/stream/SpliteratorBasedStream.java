@@ -17,18 +17,16 @@ import cyclops.companion.*;
 import cyclops.control.Eval;
 import cyclops.control.Maybe;
 import cyclops.control.lazy.Either;
-import cyclops.function.Fn3;
-import cyclops.function.Fn4;
+import cyclops.function.Function3;
+import cyclops.function.Function4;
 import cyclops.monads.Witness;
-import cyclops.function.Monoid;
 import cyclops.monads.AnyM;
 import cyclops.stream.ReactiveSeq;
-import org.jooq.lambda.Collectable;
-import org.jooq.lambda.Seq;
-import org.jooq.lambda.tuple.Tuple;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+
+import cyclops.collections.tuple.Tuple;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -147,7 +145,7 @@ public abstract class SpliteratorBasedStream<T> extends BaseExtendedStream<T>{
     }
     @Override
     public final <S, U,R> ReactiveSeq<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third,
-                                                          final Fn3<? super T, ? super S, ? super U,? extends R> fn3) {
+                                                          final Function3<? super T, ? super S, ? super U,? extends R> fn3) {
         return createSeq( new Zipping3Spliterator<>(get(),second.spliterator(),third.spliterator(),fn3));
     }
 
@@ -158,7 +156,7 @@ public abstract class SpliteratorBasedStream<T> extends BaseExtendedStream<T>{
 
 
     @Override
-    public <T2, T3, T4, R> ReactiveSeq<R> zip4(Iterable<? extends T2> second, Iterable<? extends T3> third, Iterable<? extends T4> fourth, Fn4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
+    public <T2, T3, T4, R> ReactiveSeq<R> zip4(Iterable<? extends T2> second, Iterable<? extends T3> third, Iterable<? extends T4> fourth, Function4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
         return createSeq( new Zipping4Spliterator<>(get(),second.spliterator(),third.spliterator(),fourth.spliterator(),fn));
 
     }
@@ -287,6 +285,10 @@ public abstract class SpliteratorBasedStream<T> extends BaseExtendedStream<T>{
     @Override
     public ReactiveSeq<T> limitWhileClosed(Predicate<? super T> predicate) {
         return createSeq(new LimitWhileClosedSpliterator<T>(get(),predicate),reversible);
+    }
+    @Override
+    public ReactiveSeq<T> limitUntilClosed(Predicate<? super T> predicate) {
+        return createSeq(new LimitWhileClosedSpliterator<T>(get(),predicate.negate()),reversible);
     }
 
 
@@ -781,16 +783,7 @@ public abstract class SpliteratorBasedStream<T> extends BaseExtendedStream<T>{
 
 
 
-    @Override
-    public String format() {
-        return Seq.seq(this.copy())
-                  .format();
-    }
 
-    @Override
-    public Collectable<T> collectors() {
-        return Seq.seq(copy());
-    }
 
     @Override
     public <T> ReactiveSeq<T> unitIterator(final Iterator<T> it) {

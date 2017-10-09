@@ -16,8 +16,8 @@ import cyclops.typeclasses.functor.Functor;
 import cyclops.typeclasses.monad.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import org.jooq.lambda.tuple.Tuple;
-import org.jooq.lambda.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple;
+import cyclops.collections.tuple.Tuple2;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -26,14 +26,14 @@ import java.util.function.Function;
 public final class State<S, T> implements Higher2<state,S,T> {
 
 
-    private final Fn1<S, Free<supplier,Tuple2<S, T>>> runState;
+    private final Function1<S, Free<supplier,Tuple2<S, T>>> runState;
 
 
     public Tuple2<S, T> run(S s) {
-        return Fn0.run(runState.apply(s));
+        return Function0.run(runState.apply(s));
     }
     public T eval(S s) {
-        return Fn0.run(runState.apply(s)).v2;
+        return Function0.run(runState.apply(s))._2();
     }
     public static <S> State<S, S> get() {
         return state(s -> Tuple.tuple(s, s));
@@ -51,17 +51,17 @@ public final class State<S, T> implements Higher2<state,S,T> {
     }
 
     public <R> State<S, R> map(Function<? super T,? extends R> mapper) {
-        return mapState(t -> Tuple.tuple(t.v1, mapper.apply(t.v2)));
+        return mapState(t -> Tuple.tuple(t._1(), mapper.apply(t._2())));
     }
     public <R> State<S, R> mapState(Function<Tuple2<S,T>, Tuple2<S, R>> fn) {
         return suspended(s -> runState.apply(s).map(t -> fn.apply(t)));
     }
-    private static <S, T> State<S, T> suspended(Fn1<? super S, Free<supplier,Tuple2<S, T>>> runF) {
-        return new State<>(s -> Fn0.suspend(Lambda.λK(()->runF.apply(s))));
+    private static <S, T> State<S, T> suspended(Function1<? super S, Free<supplier,Tuple2<S, T>>> runF) {
+        return new State<>(s -> Function0.suspend(Lambda.λK(()->runF.apply(s))));
     }
 
     public <R> State<S, R> flatMap(Function<? super T,? extends  State<S, R>> f) {
-        return suspended(s -> runState.apply(s).flatMap(t -> Free.done(f.apply(t.v2).run(t.v1))));
+        return suspended(s -> runState.apply(s).flatMap(t -> Free.done(f.apply(t._2()).run(t._1()))));
     }
     public static <S, T> State<S, T> constant(T constant) {
         return state(s -> Tuple.tuple(s, constant));
@@ -94,8 +94,8 @@ public final class State<S, T> implements Higher2<state,S,T> {
    */
     public  <R1, R2, R3, R4> State<S,R4> forEach4(Function<? super T, ? extends State<S,R1>> value2,
                                                   BiFunction<? super T, ? super R1, ? extends State<S,R2>> value3,
-                                                  Fn3<? super T, ? super R1, ? super R2, ? extends State<S,R3>> value4,
-                                                  Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R4> yieldingFunction) {
+                                                  Function3<? super T, ? super R1, ? super R2, ? extends State<S,R3>> value4,
+                                                  Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R4> yieldingFunction) {
 
 
         return this.flatMap(in -> {
@@ -150,7 +150,7 @@ public final class State<S, T> implements Higher2<state,S,T> {
      */
     public <R1, R2, R4> State<S,R4> forEach3(Function<? super T, ? extends State<S,R1>> value2,
                                              BiFunction<? super T, ? super R1, ? extends State<S,R2>> value3,
-                                             Fn3<? super T, ? super R1, ? super R2, ? extends R4> yieldingFunction) {
+                                             Function3<? super T, ? super R1, ? super R2, ? extends R4> yieldingFunction) {
 
         return this.flatMap(in -> {
 
@@ -204,6 +204,10 @@ public final class State<S, T> implements Higher2<state,S,T> {
             });
 
         });
+
+    }
+    public static <S,T,R> State<S, R> tailRec(T initial, Function<? super T, ? extends  State<S,  ? extends Xor<T, R>>> fn) {
+        return narrowK( State.Instances.<S> monadRec().tailRec(initial, fn));
 
     }
 

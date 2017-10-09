@@ -4,19 +4,16 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import com.aol.cyclops2.types.foldable.To;
 import com.aol.cyclops2.types.Value;
-import cyclops.control.lazy.Either;
-import cyclops.function.Fn3;
-import org.jooq.lambda.tuple.Tuple;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
+import cyclops.function.Function3;
+import cyclops.collections.tuple.Tuple;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
 
-import static javafx.scene.input.KeyCode.R;
-import static org.jooq.lambda.tuple.Tuple.tuple;
+import static cyclops.collections.tuple.Tuple.tuple;
 
 /**
  * simple Trampoline implementation : inspired by excellent TotallyLazy Java 8 impl 
@@ -121,7 +118,7 @@ public interface Trampoline<T> extends Value<T>, To<Trampoline<T>> {
         return zip(b,c,(x,y,z)->Tuple.tuple(x,y,z));
 
     }
-    default  <B,C,R> Trampoline<R> zip(Trampoline<B> b, Trampoline<C> c, Fn3<? super T, ? super B, ? super C,? extends R> fn){
+    default  <B,C,R> Trampoline<R> zip(Trampoline<B> b, Trampoline<C> c, Function3<? super T, ? super B, ? super C,? extends R> fn){
 
         Xor<Trampoline<T>,T> first = resume();
         Xor<Trampoline<B>,B> second = b.resume();

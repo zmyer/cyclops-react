@@ -10,20 +10,17 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 import com.aol.cyclops2.types.Zippable;
-import com.aol.cyclops2.types.functor.Transformable;
-import com.aol.cyclops2.types.traversable.Traversable;
 import cyclops.collections.immutable.VectorX;
 import cyclops.companion.Streams;
 import cyclops.collections.mutable.ListX;
-import cyclops.function.Fn3;
-import cyclops.function.Fn4;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+import cyclops.function.Function3;
+import cyclops.function.Function4;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 
 import cyclops.function.Monoid;
 import cyclops.stream.ReactiveSeq;
@@ -96,12 +93,12 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
     }
 
     @Override
-    default <S, U, R> LazyCollectionX<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Fn3<? super T, ? super S, ? super U, ? extends R> fn3) {
+    default <S, U, R> LazyCollectionX<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Function3<? super T, ? super S, ? super U, ? extends R> fn3) {
         return fromStream(stream().zip3(second,third,fn3));
     }
 
     @Override
-    default <T2, T3, T4, R> LazyCollectionX<R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Fn4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
+    default <T2, T3, T4, R> LazyCollectionX<R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Function4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
         return fromStream(stream().zip4(second,third,fourth,fn));
     }
     //Add to each collection type
@@ -145,7 +142,7 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#map(java.util.function.Function)
+     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#transform(java.util.function.Function)
      */
     @Override
     default <R> CollectionX<R> map(final Function<? super T, ? extends R> mapper) {
@@ -255,22 +252,8 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
                                   .map(ListX::fromIterable));
     }
 
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#grouped(java.util.function.Function, java.util.reactiveStream.Collector)
-     */
-    @Override
-    default <K, A, D> LazyCollectionX<Tuple2<K, D>> grouped(final Function<? super T, ? extends K> classifier,
-                                                            final Collector<? super T, A, D> downstream) {
-        return fromStream(stream().grouped(classifier, downstream));
-    }
 
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#grouped(java.util.function.Function)
-     */
-    @Override
-    default <K> LazyCollectionX<Tuple2<K, ReactiveSeq<T>>> grouped(final Function<? super T, ? extends K> classifier) {
-        return fromStream(stream().grouped(classifier));
-    }
+
 
     /* (non-Javadoc)
      * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip(java.lang.Iterable)
@@ -291,7 +274,7 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip(java.util.reactiveStream.Stream, java.util.function.BiFunction)
+     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip(java.util.stream.Stream, java.util.function.BiFunction)
      */
     @Override
     default <U, R> LazyCollectionX<R> zipS(final Stream<? extends U> other, final BiFunction<? super T, ? super U, ? extends R> zipper) {
@@ -432,7 +415,7 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip(java.util.stream.Stream)
      */
     @Override
     default <U> LazyCollectionX<Tuple2<T, U>> zipS(final Stream<? extends U> other) {
@@ -442,7 +425,7 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip3(java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <S, U> LazyCollectionX<Tuple3<T, S, U>> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third) {
@@ -451,7 +434,7 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#zip4(java.util.stream.Stream, java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <T2, T3, T4> LazyCollectionX<Tuple4<T, T2, T3, T4>> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third,
@@ -631,10 +614,10 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.lambda.monads.Filters#removeAll(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.lambda.monads.Filters#removeAll(java.util.stream.Stream)
      */
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#removeAll(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#removeAll(java.util.stream.Stream)
      */
     @Override
     default LazyCollectionX<T> removeAllS(final Stream<? extends T> stream) {
@@ -671,7 +654,7 @@ public interface LazyCollectionX<T> extends FluentCollectionX<T> {
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#retainAllI(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.data.collections.extensions.CollectionX#retainAllI(java.util.stream.Stream)
      */
     @Override
     default LazyCollectionX<T> retainAllS(final Stream<? extends T> stream) {

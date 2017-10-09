@@ -2,11 +2,11 @@ package cyclops.stream;
 
 import cyclops.control.Ior;
 import cyclops.control.Maybe;
-import cyclops.function.BooleanFn0;
+import cyclops.function.BooleanFunction0;
 import com.aol.cyclops2.types.foldable.ConvertableSequence;
 import com.aol.cyclops2.types.stream.ToStream;
-import cyclops.function.Fn0;
-import cyclops.function.Fn1;
+import cyclops.function.Function0;
+import cyclops.function.Function1;
 import lombok.experimental.Wither;
 
 import java.util.Arrays;
@@ -367,22 +367,22 @@ public class Generator<T> implements Iterable<T>, ToStream<T> {
         };
     }
 
-    public static BooleanFn0 infinitely(){
+    public static BooleanFunction0 infinitely(){
         return ()->true;
     }
-    public static BooleanFn0 times(int times){
+    public static BooleanFunction0 times(int times){
         int[] num = {0};
         return ()->++num[0]<times-1;
     }
-    public static BooleanFn0 once(){
+    public static BooleanFunction0 once(){
         return times(1);
     }
 
-    public static interface GeneratorSupplier<T> extends Fn0<Generator<T>>
+    public static interface GeneratorSupplier<T> extends Function0<Generator<T>>
     {
 
     }
-    public static interface GeneratorFunction<T> extends Fn1<Suspended<T>,Generator<T>>
+    public static interface GeneratorFunction<T> extends Function1<Suspended<T>,Generator<T>>
     {
 
     }

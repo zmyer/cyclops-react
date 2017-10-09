@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 import com.aol.cyclops2.types.foldable.Evaluation;
 import cyclops.collections.immutable.OrderedSetX;
 import cyclops.stream.Spouts;
-import org.jooq.lambda.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple2;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -74,7 +74,6 @@ public class POrderedSetXTest extends AbstractCollectionXTest{
     public void forEach2() {
 
         assertThat(of(1, 2, 3).forEach2(a -> Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9), (a, b) -> a + b)
-                              .toList()
                               .size(),
                    equalTo(12));
     }

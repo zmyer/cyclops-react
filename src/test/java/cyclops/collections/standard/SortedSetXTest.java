@@ -21,7 +21,7 @@ import cyclops.collections.mutable.ListX;
 import cyclops.function.FluentFunctions;
 import cyclops.stream.ReactiveSeq;
 import cyclops.stream.Spouts;
-import org.jooq.lambda.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple2;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -52,10 +52,10 @@ public class SortedSetXTest extends AbstractCollectionXTest {
     @Test
     public void combinations2NoOrder2() {
 
-        //ListX.of(1, 2, 3).combinations(2).map(t->t.toListX()).printOut();
+        //ListX.of(1, 2, 3).combinations(2).transform(t->t.toListX()).printOut();
         CollectionX<ListX<Integer>> st = of(1, 2, 3).combinations(2).map(s -> s.toListX());
         st.toListX().printOut();
-       // assertThat(of(1, 2, 3).combinations(2).map(s->s.toListX()).toListX().get(0).size(),
+       // assertThat(of(1, 2, 3).combinations(2).transform(s->s.toListX()).toListX().get(0).size(),
         //        equalTo(2));
     }
     @Test
@@ -92,7 +92,7 @@ public class SortedSetXTest extends AbstractCollectionXTest {
     }
 
     private Integer logAndUnwrap(Tuple2<Integer, Long> t) {
-        return t.v1;
+        return t._1();
     }
 
 
@@ -129,8 +129,8 @@ public class SortedSetXTest extends AbstractCollectionXTest {
     @Override
     public void forEach2() {
 
+        System.out.println(of(1, 2, 3).forEach2(a -> Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9), (a, b) -> a + b));
         assertThat(of(1, 2, 3).forEach2(a -> Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9), (a, b) -> a + b)
-                              .toList()
                               .size(),
                    equalTo(12));
     }

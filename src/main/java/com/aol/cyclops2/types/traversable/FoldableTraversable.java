@@ -1,15 +1,18 @@
 package com.aol.cyclops2.types.traversable;
 
+import com.aol.cyclops2.types.foldable.ConvertableSequence;
+import com.aol.cyclops2.types.foldable.Folds;
+import com.aol.cyclops2.types.reactive.ReactiveStreamsTerminalOperations;
 import cyclops.collections.mutable.ListX;
 import cyclops.collections.mutable.SetX;
+import cyclops.collections.tuple.Tuple0;
 import cyclops.control.Eval;
 import cyclops.async.Future;
+import cyclops.control.lazy.Either3;
 import cyclops.stream.ReactiveSeq;
 import cyclops.control.Try;
-import com.aol.cyclops2.types.foldable.CyclopsCollectable;
 import com.aol.cyclops2.types.stream.HeadAndTail;
-import cyclops.function.Fn1;
-import org.jooq.lambda.Seq;
+import cyclops.function.Function1;
 import org.reactivestreams.Subscription;
 
 import java.util.concurrent.Executor;
@@ -22,11 +25,15 @@ import java.util.function.Supplier;
  * Created by johnmcclean on 17/12/2016.
  */
 public interface FoldableTraversable<T> extends Traversable<T>,
-                                                CyclopsCollectable<T>,
+                                                Folds<T>,
+                                                Iterable<T>,
+                                                ReactiveStreamsTerminalOperations<T>,
                                                 ExtendedTraversable<T>{
 
 
-
+    default ConvertableSequence<T> to(){
+        return new ConvertableSequence<>(this);
+    }
 
     default ListX<T> toListX(){
         return to().listX();
@@ -40,7 +47,7 @@ public interface FoldableTraversable<T> extends Traversable<T>,
      *  <pre>
      *  {@code
      *    Future<Integer> sum =  ListX.of(1,2,3)
-     *                                 .map(this::load)
+     *                                 .transform(this::load)
      *                                 .foldFuture(exec,list->list.reduce(0,(a,b)->a+b))
      *
      *  }
@@ -65,7 +72,7 @@ public interface FoldableTraversable<T> extends Traversable<T>,
      *  <pre>
      *  {@code
      *    Eval<Integer> sum =  ListX.of(1,2,3)
-     *                                 .map(this::load)
+     *                                 .transform(this::load)
      *                                 .foldLazy(list->list.reduce(0,(a,b)->a+b))
      *
      *  }
@@ -84,11 +91,11 @@ public interface FoldableTraversable<T> extends Traversable<T>,
     }
 
     /**
-     * Try a fold, capturing any unhandling execution exceptions (that match the provided classes)
+     * Try a fold, capturing any unhandling execution exceptions (that fold the provided classes)
      *  <pre>
      *  {@code
      *    Try<Integer,Throwable> sum =  ListX.of(1,2,3)
-     *                                       .map(this::load)
+     *                                       .transform(this::load)
      *                                       .foldLazy(list->list.reduce(0,(a,b)->a+b),IOException.class)
      *
      *  }
@@ -102,7 +109,7 @@ public interface FoldableTraversable<T> extends Traversable<T>,
         return Try.catchExceptions(classes).tryThis(()->fn.apply(this));
     }
 
-    default  Fn1<Long,T> asFunction(){
+    default Function1<Long,T> asFunction(){
         return index->this.get(index).orElse(null);
     }
 
@@ -111,9 +118,7 @@ public interface FoldableTraversable<T> extends Traversable<T>,
     @Override
     ReactiveSeq<T> stream();
 
-    default Seq<T> seq(){
-        return Seq.seq(this);
-    }
+
     /**
      * Destructures this Traversable into it's head and tail. If the traversable instance is not a SequenceM or Stream type,
      * whenStream may be more efficient (as it is guaranteed to be maybe).
@@ -170,19 +175,19 @@ public interface FoldableTraversable<T> extends Traversable<T>,
     }
     @Override
     default <X extends Throwable> Subscription forEachSubscribe(Consumer<? super T> consumer){
-        Subscription result = CyclopsCollectable.super.forEachSubscribe(consumer, e->e.printStackTrace(),()->{});
+        Subscription result = ReactiveStreamsTerminalOperations.super.forEachSubscribe(consumer, e->e.printStackTrace(),()->{});
         return result;
     }
 
     @Override
     default <X extends Throwable> Subscription forEachSubscribe(Consumer<? super T> consumer, Consumer<? super Throwable> consumerError){
-        Subscription result = CyclopsCollectable.super.forEachSubscribe(consumer,consumerError,()->{});
+        Subscription result = ReactiveStreamsTerminalOperations.super.forEachSubscribe(consumer,consumerError,()->{});
         return result;
     }
 
     @Override
     default <X extends Throwable> Subscription forEachSubscribe(Consumer<? super T> consumer, Consumer<? super Throwable> consumerError, Runnable onComplete){
-        Subscription result = CyclopsCollectable.super.forEachSubscribe(consumer,consumerError,onComplete);
+        Subscription result = ReactiveStreamsTerminalOperations.super.forEachSubscribe(consumer,consumerError,onComplete);
         return result;
     }
     @Override
@@ -209,4 +214,5 @@ public interface FoldableTraversable<T> extends Traversable<T>,
     default <X extends Throwable> void forEach(Consumer<? super T> consumerElement, Consumer<? super Throwable> consumerError, Runnable onComplete){
         stream().forEach(consumerElement, consumerError, onComplete);
     }
+   
 }

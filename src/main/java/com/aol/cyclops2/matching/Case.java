@@ -2,15 +2,16 @@ package com.aol.cyclops2.matching;
 
 import static java.util.Optional.empty;
 
-import org.jooq.lambda.tuple.Tuple1;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
-import org.jooq.lambda.tuple.Tuple5;
+import cyclops.collections.tuple.Tuple1;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
+import cyclops.collections.tuple.Tuple5;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -44,7 +45,18 @@ public interface Case<T, R> {
       return val.isPresent() ? val : orCase.test(t);
     };
   }
+  @AllArgsConstructor
+  final class CaseFn<T, R> implements Case<T, R>{
 
+
+    final Function<? super T,? extends R> fn;
+
+    @Override
+    public Optional<R> test(T value) {
+      return Optional.of(fn.apply(value));
+    }
+
+  }
   @AllArgsConstructor
   final class Case0<T, R> implements Case<T, R> {
 
@@ -66,7 +78,7 @@ public interface Case<T, R> {
 
     @Override
     public Optional<R> test(Tuple1<T1> value) {
-      return predicate.test(value.v1) ? Optional.of(supplier.get()) : empty();
+      return predicate.test(value._1()) ? Optional.of(supplier.get()) : empty();
     }
 
   }
@@ -76,11 +88,11 @@ public interface Case<T, R> {
 
     final Predicate<T1> predicate1;
     final Predicate<T2> predicate2;
-    final Supplier<R> supplier;
+    final Function<? super Tuple2<T1,T2>,? extends R> supplier;
 
     @Override
     public Optional<R> test(Tuple2<T1, T2> value) {
-      return predicate1.test(value.v1) && predicate2.test(value.v2) ? Optional.of(supplier.get()) : empty();
+      return predicate1.test(value._1()) && predicate2.test(value._2()) ? Optional.of(supplier.apply(value)) : empty();
     }
 
   }
@@ -96,7 +108,7 @@ public interface Case<T, R> {
 
     @Override
     public Optional<R> test(Tuple3<T1, T2, T3> value) {
-      return predicate1.test(value.v1) && predicate2.test(value.v2) && predicate3.test(value.v3) ? Optional.of(supplier.get()) : empty();
+      return predicate1.test(value._1()) && predicate2.test(value._2()) && predicate3.test(value._3()) ? Optional.of(supplier.get()) : empty();
     }
 
   }
@@ -113,7 +125,7 @@ public interface Case<T, R> {
 
     @Override
     public Optional<R> test(Tuple4<T1, T2, T3, T4> value) {
-      return predicate1.test(value.v1) && predicate2.test(value.v2) && predicate3.test(value.v3) && predicate4.test(value.v4) ? Optional.of(supplier.get()) : empty();
+      return predicate1.test(value._1()) && predicate2.test(value._2()) && predicate3.test(value._3()) && predicate4.test(value._4()) ? Optional.of(supplier.get()) : empty();
     }
 
   }
@@ -131,7 +143,7 @@ public interface Case<T, R> {
 
     @Override
     public Optional<R> test(Tuple5<T1, T2, T3, T4, T5> value) {
-      return predicate1.test(value.v1) && predicate2.test(value.v2) && predicate3.test(value.v3) && predicate4.test(value.v4) && predicate5.test(value.v5) ? Optional.of(supplier.get()) : empty();
+      return predicate1.test(value._1()) && predicate2.test(value._2()) && predicate3.test(value._3()) && predicate4.test(value._4()) && predicate5.test(value._5()) ? Optional.of(supplier.get()) : empty();
     }
 
   }

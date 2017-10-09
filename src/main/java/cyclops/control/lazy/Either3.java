@@ -3,6 +3,7 @@ package cyclops.control.lazy;
 import com.aol.cyclops2.data.collections.extensions.CollectionX;
 import com.aol.cyclops2.hkt.Higher;
 import com.aol.cyclops2.hkt.Higher3;
+import com.aol.cyclops2.matching.Sealed3;
 import com.aol.cyclops2.types.*;
 import com.aol.cyclops2.types.foldable.To;
 import com.aol.cyclops2.types.functor.BiTransformable;
@@ -24,9 +25,9 @@ import cyclops.typeclasses.functor.Functor;
 import cyclops.typeclasses.monad.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
@@ -35,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.Stream;
 /**
- * A right biased Lazy Either3 type. map / flatMap operators are tail-call optimized
+ * A right biased Lazy Either3 type. transform / flatMap operators are tail-call optimized
  * 
  * Can be one of 3 types
  * 
@@ -51,6 +52,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
                                                 BiTransformable<LT2, RT>,
                                                 To<Either3<LT1, LT2, RT>>,
                                                 Supplier<RT>,
+                                                Sealed3<LT1,LT2,RT>,
                                                 Higher3<either3,LT1,LT2,RT> {
 
     public static  <LT1,LT2,T> Kleisli<Higher<Higher<either3, LT1>, LT2>,Either3<LT1,LT2,T>,T> kindKleisli(){
@@ -79,7 +81,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
      *      ___Example 1___
      *
      *      CompletableEither<Integer,Integer> completable = Either3.either3();
-            Either3<Throwable,String,Integer> mapped = completable.map(i->i*2)
+            Either3<Throwable,String,Integer> mapped = completable.transform(i->i*2)
                                                                   .flatMap(i->Eval.later(()->i+1));
 
             completable.complete(5);
@@ -90,7 +92,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
             ___Example 2___
 
             CompletableEither<Integer,Integer> completable = Either3.either3();
-            Either3<Throwable,String,Integer> mapped = completable.map(i->i*2)
+            Either3<Throwable,String,Integer> mapped = completable.transform(i->i*2)
                                                                   .flatMap(i->Eval.later(()->i+1));
 
 
@@ -101,7 +103,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
             ___Example 3___
 
             CompletableEither<Integer,Integer> completable = Either3.either3();
-            Either3<Throwable,String,Integer> mapped = completable.map(i->i*2)
+            Either3<Throwable,String,Integer> mapped = completable.transform(i->i*2)
                                                                  .flatMap(i->Eval.later(()->i+1));
 
             completable.complete(new IllegalStateException());
@@ -201,6 +203,11 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
         @Override
         public <T> Either3<Throwable, LT1, T> unit(T unit) {
             return either.unit(unit);
+        }
+
+        @Override
+        public <R> R fold(Function<? super Throwable, ? extends R> fn1, Function<? super LT1, ? extends R> fn2, Function<? super RT, ? extends R> fn3) {
+            return either.fold(fn1,fn2,fn3);
         }
     }
 
@@ -565,7 +572,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     }
 
     @Override
-    default <S, U, R> Either3<LT1,LT2,R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Fn3<? super RT, ? super S, ? super U, ? extends R> fn3) {
+    default <S, U, R> Either3<LT1,LT2,R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Function3<? super RT, ? super S, ? super U, ? extends R> fn3) {
         return (Either3<LT1,LT2,R>)MonadicValue.super.zip3(second,third,fn3);
     }
 
@@ -575,7 +582,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     }
 
     @Override
-    default <T2, T3, T4, R> Either3<LT1,LT2,R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Fn4<? super RT, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
+    default <T2, T3, T4, R> Either3<LT1,LT2,R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Function4<? super RT, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
         return (Either3<LT1,LT2,R>)MonadicValue.super.zip4(second,third,fourth,fn);
     }
 
@@ -607,8 +614,8 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     @Override
     default <T2, R1, R2, R3, R> Either3<LT1,LT2,R> forEach4(Function<? super RT, ? extends MonadicValue<R1>> value1,
                                                             BiFunction<? super RT, ? super R1, ? extends MonadicValue<R2>> value2,
-                                                            Fn3<? super RT, ? super R1, ? super R2, ? extends MonadicValue<R3>> value3,
-                                                            Fn4<? super RT, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                                            Function3<? super RT, ? super R1, ? super R2, ? extends MonadicValue<R3>> value3,
+                                                            Function4<? super RT, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
 
         return (Either3<LT1,LT2,R>)MonadicValue.super.forEach4(value1, value2, value3, yieldingFunction);
     }
@@ -618,9 +625,9 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     @Override
     default <T2, R1, R2, R3, R> Either3<LT1,LT2,R> forEach4(Function<? super RT, ? extends MonadicValue<R1>> value1,
                                                             BiFunction<? super RT, ? super R1, ? extends MonadicValue<R2>> value2,
-                                                            Fn3<? super RT, ? super R1, ? super R2, ? extends MonadicValue<R3>> value3,
-                                                            Fn4<? super RT, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
-                                                            Fn4<? super RT, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                                            Function3<? super RT, ? super R1, ? super R2, ? extends MonadicValue<R3>> value3,
+                                                            Function4<? super RT, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
+                                                            Function4<? super RT, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
 
         return (Either3<LT1,LT2,R>)MonadicValue.super.forEach4(value1, value2, value3, filterFunction, yieldingFunction);
     }
@@ -630,7 +637,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     @Override
     default <T2, R1, R2, R> Either3<LT1,LT2,R> forEach3(Function<? super RT, ? extends MonadicValue<R1>> value1,
                                                         BiFunction<? super RT, ? super R1, ? extends MonadicValue<R2>> value2,
-                                                        Fn3<? super RT, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                                        Function3<? super RT, ? super R1, ? super R2, ? extends R> yieldingFunction) {
 
         return (Either3<LT1,LT2,R>)MonadicValue.super.forEach3(value1, value2, yieldingFunction);
     }
@@ -640,8 +647,8 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     @Override
     default <T2, R1, R2, R> Either3<LT1,LT2,R> forEach3(Function<? super RT, ? extends MonadicValue<R1>> value1,
                                                         BiFunction<? super RT, ? super R1, ? extends MonadicValue<R2>> value2,
-                                                        Fn3<? super RT, ? super R1, ? super R2, Boolean> filterFunction,
-                                                        Fn3<? super RT, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                                        Function3<? super RT, ? super R1, ? super R2, Boolean> filterFunction,
+                                                        Function3<? super RT, ? super R1, ? super R2, ? extends R> yieldingFunction) {
 
         return (Either3<LT1,LT2,R>)MonadicValue.super.forEach3(value1, value2, filterFunction, yieldingFunction);
     }
@@ -684,7 +691,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     /*
      * (non-Javadoc)
      *
-     * @see com.aol.cyclops2.types.Functor#map(java.util.function.Function)
+     * @see com.aol.cyclops2.types.Functor#transform(java.util.function.Function)
      */
     @Override
     <R> Either3<LT1, LT2, R> map(Function<? super RT, ? extends R> fn);
@@ -720,7 +727,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     /*
      * (non-Javadoc)
      *
-     * @see com.aol.cyclops2.types.Zippable#zip(java.util.reactiveStream.Stream,
+     * @see com.aol.cyclops2.types.Zippable#zip(java.util.stream.Stream,
      * java.util.function.BiFunction)
      */
     @Override
@@ -733,7 +740,7 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
     /*
      * (non-Javadoc)
      *
-     * @see com.aol.cyclops2.types.Zippable#zip(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.Zippable#zip(java.util.stream.Stream)
      */
     @Override
     default <U> Either3<LT1, LT2, Tuple2<RT, U>> zipS(final Stream<? extends U> other) {
@@ -1047,6 +1054,10 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
         }
 
 
+        @Override
+        public <R> R fold(Function<? super ST, ? extends R> fn1, Function<? super M, ? extends R> fn2, Function<? super PT, ? extends R> fn3) {
+            return this.lazy.get().fold(fn1,fn2,fn3);
+        }
     }
 
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -1226,6 +1237,10 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
         }
 
 
+        @Override
+        public <R> R fold(Function<? super ST, ? extends R> fn1, Function<? super M, ? extends R> fn2, Function<? super PT, ? extends R> fn3) {
+            return fn3.apply(value.get());
+        }
     }
 
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -1393,6 +1408,10 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
             return true;
         }
 
+        @Override
+        public <R> R fold(Function<? super ST, ? extends R> fn1, Function<? super M, ? extends R> fn2, Function<? super PT, ? extends R> fn3) {
+            return fn1.apply(value.get());
+        }
     }
 
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -1560,6 +1579,10 @@ public interface Either3<LT1, LT2, RT> extends  MonadicValue<RT>,
             return true;
         }
 
+        @Override
+        public <R> R fold(Function<? super ST, ? extends R> fn1, Function<? super M, ? extends R> fn2, Function<? super PT, ? extends R> fn3) {
+            return fn2.apply(value.get());
+        }
     }
     public static <L1,L2,T> Either3<L1,L2,T> narrowK3(final Higher3<either3, L1,L2,T> xor) {
         return (Either3<L1,L2,T>)xor;

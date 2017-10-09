@@ -1,20 +1,20 @@
 package cyclops.function;
 
 import cyclops.control.Reader;
+import cyclops.function.checked.*;
 import cyclops.monads.AnyM;
 import cyclops.stream.ReactiveSeq;
 import cyclops.control.Try;
 import cyclops.collections.box.MutableInt;
-import com.aol.cyclops2.internal.invokedynamic.CheckedTriFunction;
+import cyclops.function.checked.CheckedTriFunction;
 import cyclops.monads.WitnessType;
 import com.aol.cyclops2.util.ExceptionSoftener;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.experimental.Wither;
-import org.jooq.lambda.fi.util.function.*;
-import org.jooq.lambda.tuple.Tuple;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -201,7 +201,7 @@ public class FluentFunctions {
      * @param fn TriFunction to convert
      * @return FluentTriFunction
      */
-    public static <T1, T2, T3, R> FluentFunctions.FluentTriFunction<T1, T2, T3, R> of(final Fn3<T1, T2, T3, R> fn) {
+    public static <T1, T2, T3, R> FluentFunctions.FluentTriFunction<T1, T2, T3, R> of(final Function3<T1, T2, T3, R> fn) {
         return new FluentTriFunction<>(
                                        fn);
     }
@@ -300,7 +300,7 @@ public class FluentFunctions {
         });
     }
 
-    private static <T1, T2, T3, R> Fn3<T1, T2, T3, R> softenTriFunction(final CheckedTriFunction<T1, T2, T3, R> fn) {
+    private static <T1, T2, T3, R> Function3<T1, T2, T3, R> softenTriFunction(final CheckedTriFunction<T1, T2, T3, R> fn) {
         return (t1, t2, t3) -> {
             try {
                 return fn.apply(t1, t2, t3);
@@ -484,7 +484,7 @@ public class FluentFunctions {
     }
     @Wither(AccessLevel.PRIVATE)
     @AllArgsConstructor
-    public static class FluentSupplier<R> implements Fn0<R> {
+    public static class FluentSupplier<R> implements Function0<R> {
         private final Supplier<R> fn;
         private final String name;
 
@@ -691,7 +691,7 @@ public class FluentFunctions {
 
     @Wither(AccessLevel.PRIVATE)
     @AllArgsConstructor
-    public static class FluentFunction<T, R> implements Fn1<T, R>, Reader<T, R> {
+    public static class FluentFunction<T, R> implements Function1<T, R>, Reader<T, R> {
         private final Function<T, R> fn;
         private final String name;
 
@@ -709,7 +709,7 @@ public class FluentFunctions {
         }
 
         /* (non-Javadoc)
-         * @see cyclops2.function.Reader#map(java.util.function.Function)
+         * @see cyclops2.function.Reader#transform(java.util.function.Function)
          */
         @Override
         public <R1> FluentFunction<T, R1> map(final Function<? super R, ? extends R1> f2) {
@@ -958,7 +958,7 @@ public class FluentFunctions {
 
         public FluentFunction<Optional<T>, Optional<R>> lift() {
             return new FluentFunction<>(
-                                        opt -> opt.map(t -> fn.applyHKT(t)));
+                                        opt -> opt.transform(t -> fn.applyHKT(t)));
         }*/
 
         /**
@@ -1016,7 +1016,7 @@ public class FluentFunctions {
 
     @Wither(AccessLevel.PRIVATE)
     @AllArgsConstructor
-    public static class FluentBiFunction<T1, T2, R> implements Fn2<T1, T2, R> {
+    public static class FluentBiFunction<T1, T2, R> implements Function2<T1, T2, R> {
         BiFunction<T1, T2, R> fn;
         private final String name;
 
@@ -1052,7 +1052,7 @@ public class FluentFunctions {
          * @param action C3 to recieve input parameters and return value from BiFunction after it has executed
          * @return BiFunction with after advice attached
          */
-        public FluentBiFunction<T1, T2, R> after(final C3<T1, T2, R> action) {
+        public FluentBiFunction<T1, T2, R> after(final Consumer3<T1, T2, R> action) {
             return withFn((t1, t2) -> {
 
                 final R result = fn.apply(t1, t2);
@@ -1312,7 +1312,7 @@ public class FluentFunctions {
         public ReactiveSeq<R> iterate(final T1 seed1, final T2 seed2, final Function<R, Tuple2<T1, T2>> mapToTypeAndSplit) {
             return ReactiveSeq.iterate(fn.apply(seed1, seed2), t -> {
                 final Tuple2<T1, T2> tuple = mapToTypeAndSplit.apply(t);
-                return fn.apply(tuple.v1, tuple.v2);
+                return fn.apply(tuple._1(), tuple._2());
             });
         }
 
@@ -1378,18 +1378,18 @@ public class FluentFunctions {
          */
         @Override
         public <V> FluentBiFunction<T1, T2, V> andThen(final Function<? super R, ? extends V> after) {
-            return FluentFunctions.of(Fn2.super.andThen(after));
+            return FluentFunctions.of(Function2.super.andThen(after));
         }
 
     }
 
     @Wither(AccessLevel.PRIVATE)
     @AllArgsConstructor
-    public static class FluentTriFunction<T1, T2, T3, R> implements Fn3<T1, T2, T3, R> {
-        private final Fn3<T1, T2, T3, R> fn;
+    public static class FluentTriFunction<T1, T2, T3, R> implements Function3<T1, T2, T3, R> {
+        private final Function3<T1, T2, T3, R> fn;
         private final String name;
 
-        public FluentTriFunction(final Fn3<T1, T2, T3, R> fn) {
+        public FluentTriFunction(final Function3<T1, T2, T3, R> fn) {
             this.name = null;
             this.fn = fn;
         }
@@ -1408,7 +1408,7 @@ public class FluentFunctions {
          * @param action C3 to recieve the input parameters to TriFunction
          * @return TriFunction with before advice attached
          */
-        public FluentTriFunction<T1, T2, T3, R> before(final C3<T1, T2, T3> action) {
+        public FluentTriFunction<T1, T2, T3, R> before(final Consumer3<T1, T2, T3> action) {
             return withFn((t1, t2, t3) -> {
                 action.accept(t1, t2, t3);
                 return fn.apply(t1, t2, t3);
@@ -1421,7 +1421,7 @@ public class FluentFunctions {
          * @param action C4 to recieve  the input parameters and result from this TriFunction
          * @return TriFunction with after advice attached
          */
-        public FluentTriFunction<T1, T2, T3, R> after(final C4<T1, T2, T3, R> action) {
+        public FluentTriFunction<T1, T2, T3, R> after(final Consumer4<T1, T2, T3, R> action) {
             return withFn((t1, t2, t3) -> {
 
                 final R result = fn.apply(t1, t2, t3);
@@ -1510,7 +1510,7 @@ public class FluentFunctions {
          * 
          * @return Curried function 
          */
-        public FluentFunction<? super T1, Fn1<? super T2, Fn1<? super T3,? extends R>>> curry() {
+        public FluentFunction<? super T1, Function1<? super T2, Function1<? super T3,? extends R>>> curry() {
             return new FluentFunction(
                                         Curry.curry3(fn));
         }
@@ -1632,7 +1632,7 @@ public class FluentFunctions {
          * @param onError Recovery BiFunction
          * @return TriFunction capable of error recovery
          */
-        public <X extends Throwable> FluentTriFunction<T1, T2, T3, R> recover(final Class<X> type, final Fn3<T1, T2, T3, R> onError) {
+        public <X extends Throwable> FluentTriFunction<T1, T2, T3, R> recover(final Class<X> type, final Function3<T1, T2, T3, R> onError) {
             return FluentFunctions.of((t1, t2, t3) -> {
                 try {
                     return fn.apply(t1, t2, t3);
@@ -1702,7 +1702,7 @@ public class FluentFunctions {
         public ReactiveSeq<R> iterate(final T1 seed1, final T2 seed2, final T3 seed3, final Function<R, Tuple3<T1, T2, T3>> mapToType) {
             return ReactiveSeq.iterate(fn.apply(seed1, seed2, seed3), t -> {
                 final Tuple3<T1, T2, T3> tuple = mapToType.apply(t);
-                return fn.apply(tuple.v1, tuple.v2, tuple.v3);
+                return fn.apply(tuple._1(), tuple._2(), tuple._3());
             });
         }
         /**
@@ -1867,7 +1867,7 @@ public class FluentFunctions {
         public final T1 param1;
         public final T2 param2;
         public final T3 param3;
-        private final Fn3<T1, T2, T3, R> fn;
+        private final Function3<T1, T2, T3, R> fn;
 
         /**
          * Proceed and execute wrapped TriFunction with it's input params as captured

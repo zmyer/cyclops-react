@@ -6,13 +6,12 @@ import com.aol.cyclops2.types.foldable.Evaluation;
 import cyclops.collections.immutable.LinkedListX;
 import cyclops.collections.mutable.ListX;
 import cyclops.control.Maybe;
-import cyclops.function.Fn1;
-import cyclops.function.Predicates;
+import cyclops.function.Function1;
 import cyclops.stream.ReactiveSeq;
 import lombok.AllArgsConstructor;
 
 import java.util.List;
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 public interface Enumeration<E> {
 
@@ -20,6 +19,27 @@ public interface Enumeration<E> {
 
     int fromEnum(E a);
 
+    default E toEnumOrElse(int e, E value){
+        return toEnum(e).orElse(value);
+    }
+    default E toEnumOrElseGet(int e, Supplier<? extends E> value){
+        return toEnum(e).orElse(value.get());
+    }
+
+
+
+    default E succOrElse(E e,E value){
+        return toEnumOrElse(fromEnum(e)+1,value);
+    }
+    default E predOrElse(E e, E value){
+        return toEnumOrElse(fromEnum(e)-1,value);
+    }
+    default E succOrElseGet(E e,Supplier<? extends E> value){
+        return toEnumOrElseGet(fromEnum(e)+1,value);
+    }
+    default E predOrElseGet(E e, Supplier<? extends E> value){
+        return toEnumOrElseGet(fromEnum(e)-1,value);
+    }
 
     default Maybe<E> succ(E e){
         return toEnum(fromEnum(e)+1);
@@ -45,15 +65,23 @@ public interface Enumeration<E> {
     @AllArgsConstructor
     static class EnumerationByEnum<E extends Enum<E>> implements  Enumeration<E>{
         private final E[] values;
-        final Fn1<E,Integer> memo = this::calcFromEnum;
+        final Function1<E,Integer> memo = this::calcFromEnum;
         public Maybe<E> toEnum(int a){
 
             return a>-1 && a< values.length ? Maybe.just(values[a]) :  Maybe.none();
         }
+        public E toEnumOrElse(int a,E e){
+
+            return a>-1 && a< values.length ? values[a] :  e;
+        }
+        public E toEnumOrElseGet(int a,Supplier<? extends E> e){
+
+            return a>-1 && a< values.length ? values[a] :  e.get();
+        }
 
 
-        public Fn1<E,Integer> fromEnumMemoized(){
-            Fn1<E,Integer> fn = this::fromEnum;
+        public Function1<E,Integer> fromEnumMemoized(){
+            Function1<E,Integer> fn = this::fromEnum;
             return fn.memoize();
         }
 
@@ -75,11 +103,21 @@ public interface Enumeration<E> {
     static class EnumerationByIndexed<E> implements Enumeration<E>{
 
         private final IndexedSequenceX<E> seq;
-        final Fn1<E,Integer> memo = this::calcFromEnum;
+        final Function1<E,Integer> memo = this::calcFromEnum;
         @Override
         public Maybe<E> toEnum(int e) {
             return seq.get(e);
         }
+
+        @Override
+        public E toEnumOrElse(int e, E value) {
+            return seq.getOrElse(e,value);
+        }
+        @Override
+        public E toEnumOrElseGet(int e, Supplier<? extends E> value) {
+            return seq.getOrElseGet(e,value);
+        }
+
 
         @Override
         public int fromEnum(E a) {

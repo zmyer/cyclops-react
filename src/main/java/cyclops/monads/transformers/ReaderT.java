@@ -21,7 +21,7 @@ import java.util.function.*;
  * @param <T> Type of data stored inside the nested Future(s)
  */
 public final class ReaderT<W extends WitnessType<W>,T,R>  implements To<ReaderT<W,T,R>>,
-        Transformable<R>, Fn1<T,R> {
+        Transformable<R>, Function1<T,R> {
 
     private final AnyM<W,Reader<T,R>> run;
 
@@ -77,7 +77,7 @@ public final class ReaderT<W extends WitnessType<W>,T,R>  implements To<ReaderT<
      * <pre>
      * {@code 
      *  FutureT.of(AnyM.fromStream(Arrays.asFuture(10))
-     *             .map(t->t=t+1);
+     *             .transform(t->t=t+1);
      *  
      *  
      *  //FutureT<AnyMSeq<Stream<Future[11]>>>
@@ -85,7 +85,7 @@ public final class ReaderT<W extends WitnessType<W>,T,R>  implements To<ReaderT<
      * </pre>
      * 
      * @param f Mapping function for the wrapped Future
-     * @return FutureT that applies the map function to the wrapped Future
+     * @return FutureT that applies the transform function to the wrapped Future
      */
 
     public <B> ReaderT<W,T,B> map(final Function<? super R, ? extends B> f) {
@@ -135,8 +135,8 @@ public final class ReaderT<W extends WitnessType<W>,T,R>  implements To<ReaderT<
 
     public <T2, R1, R2, R3, B> ReaderT<W,T,B> forEach4M(Function<? super R, ? extends ReaderT<W,T,R1>> value1,
                                                       BiFunction<? super R, ? super R1, ? extends ReaderT<W,T,R2>> value2,
-                                                      Fn3<? super R, ? super R1, ? super R2, ? extends ReaderT<W,T,R3>> value3,
-                                                      Fn4<? super R, ? super R1, ? super R2, ? super R3, ? extends B> yieldingFunction) {
+                                                      Function3<? super R, ? super R1, ? super R2, ? extends ReaderT<W,T,R3>> value3,
+                                                      Function4<? super R, ? super R1, ? super R2, ? super R3, ? extends B> yieldingFunction) {
         return this.flatMapT(in->value1.apply(in)
                 .flatMapT(in2-> value2.apply(in,in2)
                         .flatMapT(in3->value3.apply(in,in2,in3)
@@ -147,7 +147,7 @@ public final class ReaderT<W extends WitnessType<W>,T,R>  implements To<ReaderT<
 
     public <T2, R1, R2, B> ReaderT<W,T,B> forEach3M(Function<? super R, ? extends ReaderT<W,T,R1>> value1,
                                                   BiFunction<? super R, ? super R1, ? extends ReaderT<W,T,R2>> value2,
-                                                  Fn3<? super R, ? super R1, ? super R2, ? extends B> yieldingFunction) {
+                                                  Function3<? super R, ? super R1, ? super R2, ? extends B> yieldingFunction) {
 
         return this.flatMapT(in->value1.apply(in).flatMapT(in2-> value2.apply(in,in2)
                 .map(in3->yieldingFunction.apply(in,in2,in3))));
@@ -166,8 +166,8 @@ public final class ReaderT<W extends WitnessType<W>,T,R>  implements To<ReaderT<
 
     public <R1, R2, R3, R4> ReaderT<W,T,R4> forEach4(Function<? super R, ? extends Function<T,R1>> value2,
                                                    BiFunction<? super R, ? super R1, ? extends Function<T,R2>> value3,
-                                                   Fn3<? super R, ? super R1, ? super R2, ? extends Function<T,R3>> value4,
-                                                   Fn4<? super R, ? super R1, ? super R2, ? super R3, ? extends R4> yieldingFunction) {
+                                                   Function3<? super R, ? super R1, ? super R2, ? extends Function<T,R3>> value4,
+                                                   Function4<? super R, ? super R1, ? super R2, ? super R3, ? extends R4> yieldingFunction) {
 
 
         return this.flatMap(in -> {
@@ -200,7 +200,7 @@ public final class ReaderT<W extends WitnessType<W>,T,R>  implements To<ReaderT<
 
     public <R1, R2, R4> ReaderT<W,T,R4> forEach3(Function<? super R, ? extends Function<T,R1>> value2,
                                                BiFunction<? super R, ? super R1, ? extends Function<T,R2>> value3,
-                                               Fn3<? super R, ? super R1, ? super R2, ? extends R4> yieldingFunction) {
+                                               Function3<? super R, ? super R1, ? super R2, ? extends R4> yieldingFunction) {
 
         return this.flatMap(in -> {
 

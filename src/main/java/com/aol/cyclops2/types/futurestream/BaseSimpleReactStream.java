@@ -13,10 +13,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
 import cyclops.stream.FutureStream;
-import org.jooq.lambda.Seq;
-
 import cyclops.async.SimpleReact;
 import cyclops.async.adapters.Queue;
 import cyclops.async.adapters.QueueFactory;
@@ -246,7 +243,7 @@ public interface BaseSimpleReactStream<U> extends BlockingStream<U> {
     <R> BaseSimpleReactStream<R> flatMap(Function<? super U, ? extends Stream<? extends R>> flatFn);
 
     /**
-     * Removes elements that do not match the supplied predicate from the
+     * Removes elements that do not fold the supplied predicate from the
      * dataflow
      * 
      * @param p
@@ -261,7 +258,7 @@ public interface BaseSimpleReactStream<U> extends BlockingStream<U> {
     /**
      * Synchronous filtering operation
      * 
-     * Removes elements that do not match the supplied predicate from the
+     * Removes elements that do not fold the supplied predicate from the
      * dataflow
      * 
      * @param p
@@ -457,7 +454,7 @@ public interface BaseSimpleReactStream<U> extends BlockingStream<U> {
      * 
      */
     static <T> SimpleReactStream<T> of(final T value) {
-        return simpleReactStream((Stream) Seq.of(value));
+        return simpleReactStream((Stream) Stream.of(value));
     }
 
     /**
@@ -467,7 +464,7 @@ public interface BaseSimpleReactStream<U> extends BlockingStream<U> {
      */
     @SafeVarargs
     static <T> SimpleReactStream<T> of(final T... values) {
-        return simpleReactStream((Stream) Seq.of(values));
+        return simpleReactStream((Stream) Stream.of(values));
     }
 
     /**
@@ -499,7 +496,7 @@ public interface BaseSimpleReactStream<U> extends BlockingStream<U> {
      * 
      */
     static <T> SimpleReactStream<T> empty() {
-        return simpleReactStream((Stream) Seq.empty());
+        return simpleReactStream((Stream) Stream.empty());
     }
 
     /**

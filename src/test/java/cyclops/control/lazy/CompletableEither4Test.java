@@ -11,8 +11,8 @@ import cyclops.collections.mutable.ListX;
 import cyclops.control.*;
 import cyclops.control.lazy.Either4.CompletableEither4;
 import cyclops.function.Monoid;
-import org.jooq.lambda.Seq;
-import org.jooq.lambda.tuple.Tuple;
+import cyclops.stream.ReactiveSeq;
+import cyclops.collections.tuple.Tuple;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -154,8 +154,8 @@ public class CompletableEither4Test {
  //pending https://github.com/aol/cyclops-react/issues/380
         //       assertThat(Either.right(10).zip((a,b)->a+b,Eval.now(20)).get(),equalTo(30));
         assertThat(right(10).zipS(Stream.of(20),(a,b)->a+b).get(),equalTo(30));
-        assertThat(right(10).zip(Seq.of(20),(a,b)->a+b).get(),equalTo(30));
-        assertThat(right(10).zip(Seq.of(20)).get(),equalTo(Tuple.tuple(10,20)));
+        assertThat(right(10).zip(ReactiveSeq.of(20),(a, b)->a+b).get(),equalTo(30));
+        assertThat(right(10).zip(ReactiveSeq.of(20)).get(),equalTo(Tuple.tuple(10,20)));
         assertThat(right(10).zipS(Stream.of(20)).get(),equalTo(Tuple.tuple(10,20)));
         assertThat(right(10).zip(Eval.now(20)).get(),equalTo(Tuple.tuple(10,20)));
     }
@@ -183,8 +183,8 @@ public class CompletableEither4Test {
         Either<String,Integer> ten = Either.right(10);
         //pending https://github.com/aol/cyclops-react/issues/380
       //  assertThat(just.combineEager(firstNonNull,nil),equalTo(just));
-     //   assertThat(just.combineEager(firstNonNull,nil.map(i->null)),equalTo(just));
-      //  assertThat(just.combineEager(firstNonNull,ten.map(i->null)),equalTo(just));
+     //   assertThat(just.combineEager(firstNonNull,nil.transform(i->null)),equalTo(just));
+      //  assertThat(just.combineEager(firstNonNull,ten.transform(i->null)),equalTo(just));
          
     }
     @Test

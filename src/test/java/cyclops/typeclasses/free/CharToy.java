@@ -2,8 +2,8 @@ package cyclops.typeclasses.free;
 
 import com.aol.cyclops2.hkt.Higher;
 import cyclops.control.lazy.Either3;
-import cyclops.function.Fn1;
-import cyclops.function.Fn2;
+import cyclops.function.Function1;
+import cyclops.function.Function2;
 import cyclops.typeclasses.functor.Functor;
 
 import java.util.function.Function;
@@ -34,7 +34,7 @@ abstract class CharToy<A> implements Higher<CharToy.µ, A> {
         return Free.done(a);
     }
 
-    public abstract <B> CharToy<B> map(Fn1<A, B> f);
+    public abstract <B> CharToy<B> map(Function1<A, B> f);
     private CharToy(){}
 
 
@@ -60,12 +60,12 @@ abstract class CharToy<A> implements Higher<CharToy.µ, A> {
         }
 
 
-        public <Z> Z visit(final Fn2<Character, A, Z> output) {
+        public <Z> Z visit(final Function2<Character, A, Z> output) {
             return output.apply(a, next);
         }
 
         @Override
-        public <B> CharToy<B> map(final Fn1<A, B> f) {
+        public <B> CharToy<B> map(final Function1<A, B> f) {
             return new CharOutput<>(a, f.apply(next));
         }
     }
@@ -82,12 +82,12 @@ abstract class CharToy<A> implements Higher<CharToy.µ, A> {
         }
 
 
-        public <Z> Z visit(final Fn1<A, Z> bell) {
+        public <Z> Z visit(final Function1<A, Z> bell) {
             return bell.apply(next);
         }
 
         @Override
-        public <B> CharToy<B> map(final Fn1<A, B> f) {
+        public <B> CharToy<B> map(final Function1<A, B> f) {
             return new CharBell<>(f.apply(next));
         }
     }
@@ -104,7 +104,7 @@ abstract class CharToy<A> implements Higher<CharToy.µ, A> {
         }
 
         @Override
-        public <B> CharToy<B> map(final Fn1<A, B> f) {
+        public <B> CharToy<B> map(final Function1<A, B> f) {
             return new CharDone<>();
         }
     }

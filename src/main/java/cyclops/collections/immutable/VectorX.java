@@ -7,7 +7,6 @@ import com.aol.cyclops2.data.collections.extensions.standard.LazyCollectionX;
 import com.aol.cyclops2.hkt.Higher;
 import cyclops.async.Future;
 import cyclops.control.Xor;
-import cyclops.monads.Witness;
 import cyclops.typeclasses.*;
 import com.aol.cyclops2.types.Zippable;
 import com.aol.cyclops2.types.anyM.AnyMSeq;
@@ -25,8 +24,8 @@ import cyclops.collections.mutable.ListX;
 import com.aol.cyclops2.types.recoverable.OnEmptySwitch;
 import com.aol.cyclops2.types.foldable.To;
 import cyclops.monads.WitnessType;
-import cyclops.function.Fn3;
-import cyclops.function.Fn4;
+import cyclops.function.Function3;
+import cyclops.function.Function4;
 import cyclops.stream.Spouts;
 import cyclops.typeclasses.comonad.Comonad;
 import cyclops.typeclasses.foldable.Foldable;
@@ -35,10 +34,9 @@ import cyclops.typeclasses.functor.Functor;
 import cyclops.typeclasses.instances.General;
 import cyclops.typeclasses.monad.*;
 import lombok.experimental.UtilityClass;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
-import org.pcollections.PSet;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.pcollections.PVector;
 import org.pcollections.TreePVector;
 import org.reactivestreams.Publisher;
@@ -49,7 +47,6 @@ import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.*;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 import static com.aol.cyclops2.types.foldable.Evaluation.LAZY;
@@ -447,8 +444,8 @@ public interface VectorX<T> extends To<VectorX<T>>,
     @Override
     default <R1, R2, R3, R> VectorX<R> forEach4(Function<? super T, ? extends Iterable<R1>> stream1,
                                                 BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
-                                                Fn3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
-                                                Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                                Function3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
+                                                Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         
         return (VectorX)LazyCollectionX.super.forEach4(stream1, stream2, stream3, yieldingFunction);
     }
@@ -459,9 +456,9 @@ public interface VectorX<T> extends To<VectorX<T>>,
     @Override
     default <R1, R2, R3, R> VectorX<R> forEach4(Function<? super T, ? extends Iterable<R1>> stream1,
                                                 BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
-                                                Fn3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
-                                                Fn4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
-                                                Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
+                                                Function3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> stream3,
+                                                Function4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
+                                                Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
         
         return (VectorX)LazyCollectionX.super.forEach4(stream1, stream2, stream3, filterFunction, yieldingFunction);
     }
@@ -472,7 +469,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
     @Override
     default <R1, R2, R> VectorX<R> forEach3(Function<? super T, ? extends Iterable<R1>> stream1,
                                             BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
-                                            Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                            Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
         
         return (VectorX)LazyCollectionX.super.forEach3(stream1, stream2, yieldingFunction);
     }
@@ -483,8 +480,8 @@ public interface VectorX<T> extends To<VectorX<T>>,
     @Override
     default <R1, R2, R> VectorX<R> forEach3(Function<? super T, ? extends Iterable<R1>> stream1,
                                             BiFunction<? super T, ? super R1, ? extends Iterable<R2>> stream2,
-                                            Fn3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
-                                            Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
+                                            Function3<? super T, ? super R1, ? super R2, Boolean> filterFunction,
+                                            Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction) {
         
         return (VectorX)LazyCollectionX.super.forEach3(stream1, stream2, filterFunction, yieldingFunction);
     }
@@ -518,7 +515,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
      * {@code 
      *   
      *     VectorX.of(1,2,3)
-     *          .map(i->i*2)
+     *          .transform(i->i*2)
      *          .coflatMap(s -> s.reduce(0,(a,b)->a+b))
      *      
      *     //VectorX[12]
@@ -563,7 +560,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#map(java.util.function.Function)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#transform(java.util.function.Function)
      */
     @Override
     default <R> VectorX<R> map(final Function<? super T, ? extends R> mapper) {
@@ -714,15 +711,6 @@ public interface VectorX<T> extends To<VectorX<T>>,
         return (VectorX<ListX<T>>) LazyCollectionX.super.grouped(groupSize);
     }
 
-    @Override
-    default <K, A, D> VectorX<Tuple2<K, D>> grouped(final Function<? super T, ? extends K> classifier, final Collector<? super T, A, D> downstream) {
-        return (VectorX) LazyCollectionX.super.grouped(classifier, downstream);
-    }
-
-    @Override
-    default <K> VectorX<Tuple2<K, ReactiveSeq<T>>> grouped(final Function<? super T, ? extends K> classifier) {
-        return (VectorX) LazyCollectionX.super.grouped(classifier);
-    }
 
     @Override
     default <U> VectorX<Tuple2<T, U>> zip(final Iterable<? extends U> other) {
@@ -848,7 +836,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zipStream(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zipStream(java.util.stream.Stream)
      */
     @Override
     default <U> VectorX<Tuple2<T, U>> zipS(final Stream<? extends U> other) {
@@ -859,7 +847,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip3(java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <S, U> VectorX<Tuple3<T, S, U>> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third) {
@@ -868,7 +856,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#zip4(java.util.stream.Stream, java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <T2, T3, T4> VectorX<Tuple4<T, T2, T3, T4>> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third,
@@ -1059,7 +1047,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#removeAll(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#removeAll(java.util.stream.Stream)
      */
     @Override
     default VectorX<T> removeAllS(final Stream<? extends T> stream) {
@@ -1095,7 +1083,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#retainAllI(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.collections.extensions.persistent.LazyCollectionX#retainAllI(java.util.stream.Stream)
      */
     @Override
     default VectorX<T> retainAllS(final Stream<? extends T> seq) {
@@ -1271,12 +1259,12 @@ public interface VectorX<T> extends To<VectorX<T>>,
 
 
     @Override
-    default <S, U, R> VectorX<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Fn3<? super T, ? super S, ? super U, ? extends R> fn3) {
+    default <S, U, R> VectorX<R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Function3<? super T, ? super S, ? super U, ? extends R> fn3) {
         return (VectorX<R>)LazyCollectionX.super.zip3(second,third,fn3);
     }
 
     @Override
-    default <T2, T3, T4, R> VectorX<R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Fn4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
+    default <T2, T3, T4, R> VectorX<R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Function4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
         return (VectorX<R>)LazyCollectionX.super.zip4(second,third,fourth,fn);
     }
 
@@ -1365,7 +1353,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
          *
          * <pre>
          * {@code
-         *  VectorX<Integer> list = PVectors.functor().map(i->i*2, Arrays.asPVector(1,2,3));
+         *  VectorX<Integer> list = PVectors.functor().transform(i->i*2, Arrays.asPVector(1,2,3));
          *
          *  //[2,4,6]
          *
@@ -1378,7 +1366,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
          * {@code
          *   VectorX<Integer> list = PVectors.unit()
         .unit("hello")
-        .applyHKT(h->PVectors.functor().map((String v) ->v.length(), h))
+        .applyHKT(h->PVectors.functor().transform((String v) ->v.length(), h))
         .convert(VectorX::narrowK3);
          *
          * }
@@ -1434,7 +1422,7 @@ public interface VectorX<T> extends To<VectorX<T>>,
 
         VectorX<Integer> list = PVectors.unit()
         .unit("hello")
-        .applyHKT(h->PVectors.functor().map((String v) ->v.length(), h))
+        .applyHKT(h->PVectors.functor().transform((String v) ->v.length(), h))
         .applyHKT(h->PVectors.zippingApplicative().ap(listFn, h))
         .convert(VectorX::narrowK3);
 

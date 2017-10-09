@@ -30,15 +30,15 @@ public interface Converters {
 
     public static <K,V> HashMap<K,V> HashMap(MapX<K,V> vec){
         return vec.unwrapIfInstance(HashMap.class,
-                ()-> vec.collect(Collectors.toMap(k->k.v1(),v->v.v2(),(a,b)->a,()->new HashMap<K,V>())));
+                ()-> vec.collect(Collectors.toMap(k->k._1(),v->v._2(),(a,b)->a,()->new HashMap<K,V>())));
     }
     public static <K,V> LinkedHashMap<K,V> LinkedHashMap(MapX<K,V> vec){
         return vec.unwrapIfInstance(LinkedHashMap.class,
-                ()-> vec.collect(Collectors.toMap(k->k.v1(),v->v.v2(),(a,b)->a,()->new LinkedHashMap<K,V>())));
+                ()-> vec.collect(Collectors.toMap(k->k._1(),v->v._2(),(a,b)->a,()->new LinkedHashMap<K,V>())));
     }
     public static <K,V> ConcurrentHashMap<K,V> ConcurrentHashMap(MapX<K,V> vec){
         return vec.unwrapIfInstance(ConcurrentHashMap.class,
-                ()-> vec.collect(Collectors.toMap(k->k.v1(),v->v.v2(),(a,b)->a,()->new ConcurrentHashMap<K,V>())));
+                ()-> vec.collect(Collectors.toMap(k->k._1(),v->v._2(),(a,b)->a,()->new ConcurrentHashMap<K,V>())));
     }
     public static <K extends Enum<K>,V> EnumMap<K,V> EnumHashMap(MapX<K,V> vec){
         return vec.unwrapIfInstance(EnumMap.class,

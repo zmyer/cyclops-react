@@ -9,12 +9,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collector;
-import java.util.stream.Stream;
 
 import cyclops.async.Future;
 
-import cyclops.function.Fn0;
+import cyclops.control.Option;
+import cyclops.function.Function0;
 import cyclops.stream.ReactiveSeq;
 import lombok.Value;
 
@@ -25,7 +24,7 @@ import lombok.Value;
  *
  * @param <T> Type of this convertable
  */
-public interface Convertable<T> extends Iterable<T>, Fn0<T>, Visitable<T> {
+public interface Convertable<T> extends Iterable<T>, Function0<T>, Visitable<T> {
 
     /**
      * Collect the contents of the monad wrapped by this AnyM into supplied collector
@@ -45,10 +44,11 @@ public interface Convertable<T> extends Iterable<T>, Fn0<T>, Visitable<T> {
      *
      * @param collector JDK collector to perform mutable reduction
      * @return Reduced value
-     */
+
     default <R, A> R collect(Collector<? super T, A, R> collector){
         return this.toStream().collect(collector);
     }
+     */
     /* Present is executed and it's return value returned if the value is both present, otherwise absent is called and its return value returned
      *
      * (non-Javadoc)
@@ -56,7 +56,6 @@ public interface Convertable<T> extends Iterable<T>, Fn0<T>, Visitable<T> {
      */
     @Override
     default <R> R visit(final Function<? super T, ? extends R> present, final Supplier<? extends R> absent) {
-
         if (isPresent()) {
             try {
                 final T value = get();
@@ -131,6 +130,10 @@ public interface Convertable<T> extends Iterable<T>, Fn0<T>, Visitable<T> {
 
         return visit(p -> Optional.ofNullable(p), () -> Optional.empty());
     }
+    default Option<T> toOption() {
+        return visit(p -> Option.ofNullable(p), () -> Option.none());
+
+    }
 
     /**
      * @return Stream containing value returned by get(), Empty Stream if null
@@ -159,6 +162,7 @@ public interface Convertable<T> extends Iterable<T>, Fn0<T>, Visitable<T> {
      * @throws X Exception type returned by provided Supplier
      */
     default <X extends Throwable> T orElseThrow(final Supplier<? extends X> ex) throws X {
+
         return toOptional().orElseThrow(ex);
     }
 

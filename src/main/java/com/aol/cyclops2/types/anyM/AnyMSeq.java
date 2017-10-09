@@ -18,18 +18,15 @@ import com.aol.cyclops2.types.*;
 
 
 import com.aol.cyclops2.types.foldable.ConvertableSequence;
-import com.aol.cyclops2.types.functor.Transformable;
 import com.aol.cyclops2.types.traversable.FoldableTraversable;
 import com.aol.cyclops2.types.traversable.Traversable;
 import cyclops.async.adapters.QueueFactory;
 import cyclops.collections.mutable.*;
 import cyclops.collections.immutable.*;
 import cyclops.monads.WitnessType;
-import org.jooq.lambda.Collectable;
-import org.jooq.lambda.Seq;
-import org.jooq.lambda.tuple.Tuple2;
-import org.jooq.lambda.tuple.Tuple3;
-import org.jooq.lambda.tuple.Tuple4;
+import cyclops.collections.tuple.Tuple2;
+import cyclops.collections.tuple.Tuple3;
+import cyclops.collections.tuple.Tuple4;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -41,8 +38,8 @@ import cyclops.control.Trampoline;
 import cyclops.control.Xor;
 import com.aol.cyclops2.types.extensability.FunctionalAdapter;
 import cyclops.function.Predicates;
-import cyclops.function.Fn4;
-import cyclops.function.Fn3;
+import cyclops.function.Function4;
+import cyclops.function.Function3;
 
 /**
  * Wrapper around 'Any' non-scalar 'M'onad
@@ -81,8 +78,8 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
      */
     default <R1, R2, R3,R> AnyMSeq<W,R> forEach4(final Function<? super T, ? extends AnyM<W,R1>> monad1,
                         final BiFunction<? super T,? super R1, ? extends AnyM<W,R2>> monad2,
-                            final Fn3<? super T, ? super R1, ? super R2, ? extends AnyM<W,R3>> monad3,
-                            final Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction){
+                            final Function3<? super T, ? super R1, ? super R2, ? extends AnyM<W,R3>> monad3,
+                            final Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction){
        
         return this.flatMapA(in -> {
 
@@ -120,9 +117,9 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
      */
     default <R1, R2, R3,R> AnyMSeq<W,R> forEach4(final Function<? super T, ? extends AnyM<W,R1>> monad1,
             final BiFunction<? super T,? super R1, ? extends AnyM<W,R2>> monad2,
-                    final Fn3<? super T, ? super R1, ? super R2, ? extends AnyM<W,R3>> monad3,
-                        final Fn4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
-                final Fn4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction){
+                    final Function3<? super T, ? super R1, ? super R2, ? extends AnyM<W,R3>> monad3,
+                        final Function4<? super T, ? super R1, ? super R2, ? super R3, Boolean> filterFunction,
+                final Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction){
 
         return this.flatMapA(in -> {
 
@@ -228,8 +225,8 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
      */
     default <R1, R2, R> AnyMSeq<W,R> forEach3(Function<? super T, ? extends AnyM<W,R1>> monad1,
             BiFunction<? super T, ? super R1, ? extends AnyM<W,R2>> monad2,
-            Fn3<? super T,? super R1, ? super R2, Boolean> filterFunction,
-            Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction){
+            Function3<? super T,? super R1, ? super R2, Boolean> filterFunction,
+            Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction){
 
         return this.flatMapA(in -> {
 
@@ -267,7 +264,7 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
      */
     default <R1, R2, R> AnyMSeq<W,R> forEach3(Function<? super T, ? extends AnyM<W,R1>> monad1,
             BiFunction<? super T, ? super R1, ? extends AnyM<W,R2>> monad2,
-            Fn3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction){
+            Function3<? super T, ? super R1, ? super R2, ? extends R> yieldingFunction){
         return this.flatMapA(in -> {
 
             AnyM<W,R1> a = monad1.apply(in);
@@ -488,7 +485,7 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.reactiveStream.Stream, java.util.function.BiFunction)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.stream.Stream, java.util.function.BiFunction)
      */
     @Override
     default <U, R> AnyMSeq<W,R> zipS(final Stream<? extends U> other, final BiFunction<? super T, ? super U, ? extends R> zipper) {
@@ -499,7 +496,7 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip(java.util.stream.Stream)
      */
     @Override
     default <U> AnyMSeq<W,Tuple2<T, U>> zipS(final Stream<? extends U> other) {
@@ -519,7 +516,7 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
 
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip3(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip3(java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <S, U> AnyMSeq<W,Tuple3<T, S, U>> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third) {
@@ -528,7 +525,7 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#zip4(java.util.reactiveStream.Stream, java.util.reactiveStream.Stream, java.util.reactiveStream.Stream)
+     * @see com.aol.cyclops2.types.traversable.Traversable#zip4(java.util.stream.Stream, java.util.stream.Stream, java.util.stream.Stream)
      */
     @Override
     default <T2, T3, T4> AnyMSeq<W,Tuple4<T, T2, T3, T4>> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third,
@@ -640,23 +637,6 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
         return fromIterable(FoldableTraversable.super.grouped(groupSize));
     }
 
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#grouped(java.util.function.Function, java.util.reactiveStream.Collector)
-     */
-    @Override
-    default <K, A, D> AnyMSeq<W,Tuple2<K, D>> grouped(final Function<? super T, ? extends K> classifier, final Collector<? super T, A, D> downstream) {
-
-        return fromIterable(FoldableTraversable.super.grouped(classifier, downstream));
-    }
-
-    /* (non-Javadoc)
-     * @see com.aol.cyclops2.types.traversable.Traversable#grouped(java.util.function.Function)
-     */
-    @Override
-    default <K> AnyMSeq<W,Tuple2<K, ReactiveSeq<T>>> grouped(final Function<? super T, ? extends K> classifier) {
-
-        return fromIterable(FoldableTraversable.super.grouped(classifier));
-    }
 
     /* (non-Javadoc)
      * @see com.aol.cyclops2.types.traversable.Traversable#takeWhile(java.util.function.Predicate)
@@ -937,7 +917,7 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
     }
 
     /* (non-Javadoc)
-     * @see com.aol.cyclops2.monad.AnyM#map(java.util.function.Function)
+     * @see com.aol.cyclops2.monad.AnyM#transform(java.util.function.Function)
      */
     @Override
     default <R> AnyMSeq<W,R> map(Function<? super T, ? extends R> fn){
@@ -1163,26 +1143,15 @@ public interface AnyMSeq<W extends WitnessType<W>,T> extends AnyM<W,T>, Foldable
 
 
     @Override
-    default <S, U, R> AnyMSeq<W,R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Fn3<? super T, ? super S, ? super U, ? extends R> fn3) {
+    default <S, U, R> AnyMSeq<W,R> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third, final Function3<? super T, ? super S, ? super U, ? extends R> fn3) {
         return fromIterable(FoldableTraversable.super.zip3(second,third,fn3));
     }
 
     @Override
-    default <T2, T3, T4, R> AnyMSeq<W,R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Fn4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
+    default <T2, T3, T4, R> AnyMSeq<W,R> zip4(final Iterable<? extends T2> second, final Iterable<? extends T3> third, final Iterable<? extends T4> fourth, final Function4<? super T, ? super T2, ? super T3, ? super T4, ? extends R> fn) {
         return fromIterable(FoldableTraversable.super.zip4(second,third,fourth,fn));
     }
 
-    /**
-     * Narrow this class to a Collectable
-     *
-     * @return Collectable
-     */
-    default Collectable<T> collectors(){
-        ReactiveSeq<T> x = this.adapter().toStream(this);
 
-        return x.collectors();
-    }
-    default Seq<T> seq(){
-        return Seq.seq((Stream<T>)stream());
-    }
+
 }
