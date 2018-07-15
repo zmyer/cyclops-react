@@ -1,13 +1,15 @@
 package cyclops.data.basetests;
 
-import cyclops.collections.AbstractIterableXTest;
-import cyclops.reactive.collections.mutable.ListX;
+import cyclops.data.basetests.AbstractIterableXTest;
+
 import cyclops.companion.Monoids;
 import cyclops.control.Option;
 import cyclops.data.ImmutableList;
 import cyclops.data.Seq;
+import cyclops.data.tuple.Tuple;
 import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.Spouts;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -27,6 +29,60 @@ public abstract class BaseImmutableListTest extends AbstractIterableXTest {
     @Override
     public abstract <T> ImmutableList<T> of(T... values);
     public abstract <T> ImmutableList<T> empty();
+
+    @Test
+    public void span(){
+
+        assertThat(of(1,2,3,4,1,2,3,4).span(i->i<3),equalTo(Tuple.tuple(of(1,2),of(3,4,1,2,3,4))));
+        assertThat(of(1,2,3).span(i->i<9),equalTo(Tuple.tuple(of(1,2,3),of())));
+        assertThat(of(1,2,3).span(i->i<0),equalTo(Tuple.tuple(of(),of(1,2,3))));
+    }
+
+    @Test
+    public void splitBy(){
+
+        assertThat(of(1,2,3,4,1,2,3,4).splitBy(i->i>3),equalTo(Tuple.tuple(of(1,2,3),of(4,1,2,3,4))));
+        assertThat(of(1,2,3).splitBy(i->i<9),equalTo(Tuple.tuple(of(),of(1,2,3))));
+        assertThat(of(1,2,3).splitBy(i->i<0),equalTo(Tuple.tuple(of(1,2,3),of())));
+    }
+    @Test
+    public void visit(){
+
+        String res= of(1,2,3).fold((x,xs)-> xs.join(x>2? "hello" : "world"),
+            ()->"boo!");
+
+        MatcherAssert.assertThat(res,equalTo("2world3"));
+    }
+
+    @Test
+    public void when2(){
+
+        Integer res =   of(1,2,3).fold((x,xs)->x,()->10);
+        System.out.println(res);
+    }
+    @Test
+    public void whenNilOrNot(){
+        String res1=    of(1,2,3).fold((x,xs)-> x>2? "hello" : "world",()->"EMPTY");
+    }
+
+
+    //make not order dep
+
+    @Test
+    public void whenNilOrNotJoinWithFirstElementNoOrd(){
+
+
+        String res= of(1,2,3).fold((x,xs)-> xs.join(x>2? "hello" : "world"),()->"EMPTY");
+        MatcherAssert.assertThat(res,equalTo("2world3"));
+    }
+    @Test
+    public void whenGreaterThan2NoOrd() {
+        String res = of(5, 2, 3).fold((x, xs) -> xs.join(x > 2 ? "hello" : "world"), () -> "boo!");
+
+        MatcherAssert.assertThat(res, equalTo("2hello3"));
+    }
+
+
     @Test
     public void emptyUnit(){
         assertTrue(of(1,2,3).emptyUnit().isEmpty());
@@ -93,6 +149,7 @@ public abstract class BaseImmutableListTest extends AbstractIterableXTest {
     }
     @Test
     public void replaceFirstTest(){
+
         assertThat(of(1,2,3).replaceFirst(2,3),equalTo(of(1,3,3)));
         assertThat(of(1,2,2,3).replaceFirst(2,3),equalTo(of(1,3,2,3)));
         assertThat(empty().replaceFirst(2,3),equalTo(of()));
@@ -129,8 +186,8 @@ public abstract class BaseImmutableListTest extends AbstractIterableXTest {
 
       Assert.assertThat(this.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
         .mergeMap(i -> of(i, i * 2, i * 4)
-          .mergeMap(x -> of(5, 6, 7))).toListX().size(),
-        equalTo(ListX.of(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+          .mergeMap(x -> of(5, 6, 7))).toList().size(),
+        equalTo(Arrays.asList(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
           5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6
           , 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
           , 7, 7, 7, 7, 7).size()));
@@ -146,8 +203,8 @@ public abstract class BaseImmutableListTest extends AbstractIterableXTest {
 
       Assert.assertThat(this.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
         .mergeMap(3,i -> Spouts.of(i, i * 2, i * 4)
-          .mergeMap(3,x -> of(5, 6, 7))).toListX().size(),
-        equalTo(ListX.of(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7).size()));
+          .mergeMap(3,x -> of(5, 6, 7))).toList().size(),
+        equalTo(Arrays.asList(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7).size()));
 
     }
   }

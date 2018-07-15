@@ -188,17 +188,10 @@ public class SeqInstances {
     BiFunction<Applicative<C2>,Seq<Higher<C2, T>>,Higher<C2, Seq<T>>> sequenceFn = (ap, list) -> {
 
       Higher<C2,Seq<T>> identity = ap.unit(Seq.empty());
+       BiFunction<Higher<C2,T>,Higher<C2,Seq<T>>,Higher<C2,Seq<T>>> combineToPStack =   (acc, next) -> ap.apBiFn(ap.unit((a, b) ->a.plus(b)),next,acc);
 
-      BiFunction<Higher<C2,Seq<T>>,Higher<C2,T>,Higher<C2,Seq<T>>> combineToPStack =   (acc, next) -> ap.apBiFn(ap.unit((a, b) ->a.plus(b)),acc,next);
+       return list.foldRight(identity,combineToPStack);
 
-      BinaryOperator<Higher<C2,Seq<T>>> combinePStacks = (a, b)-> ap.apBiFn(ap.unit((l1, l2)-> l1.plusAll(l2)),a,b); ;
-
-
-      return list.stream()
-        .reverse()
-        .reduce(identity,
-          combineToPStack,
-          combinePStacks);
 
 
     };
@@ -209,7 +202,7 @@ public class SeqInstances {
 
   public static <T,R> Foldable<seq> foldable(){
     BiFunction<Monoid<T>,Higher<seq,T>,T> foldRightFn =  (m, l)-> narrowK(l).foldRight(m);
-    BiFunction<Monoid<T>,Higher<seq,T>,T> foldLeftFn = (m, l)-> narrowK(l).reduce(m);
+    BiFunction<Monoid<T>,Higher<seq,T>,T> foldLeftFn = (m, l)-> narrowK(l).foldLeft(m);
     Function3<Monoid<R>, Function<T, R>, Higher<seq, T>, R> foldMapFn = (m, f, l)->narrowK(l).map(f).foldLeft(m);
 
     return General.foldable(foldRightFn, foldLeftFn,foldMapFn);

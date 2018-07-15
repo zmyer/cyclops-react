@@ -2,7 +2,6 @@ package com.oath.cyclops.types;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -11,13 +10,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import com.oath.cyclops.types.foldable.Folds;
 import com.oath.cyclops.types.traversable.IterableX;
-import cyclops.reactive.collections.mutable.ListX;
+import cyclops.data.HashMap;
+import cyclops.data.Vector;
 import org.junit.Test;
 
 import cyclops.reactive.ReactiveSeq;
@@ -81,63 +80,34 @@ public abstract class AbstractFoldableTest {
     @Test
     public void endsWith(){
         assertTrue(of(1,2,3,4,5,6)
-                .endsWithIterable(Arrays.asList(5,6)));
+                .endsWith(Arrays.asList(5,6)));
     }
     @Test
     public void endsWithFalse(){
         assertFalse(of(1,2,3,4,5,6)
-                .endsWithIterable(Arrays.asList(5,6,7)));
+                .endsWith(Arrays.asList(5,6,7)));
     }
     @Test
     public void endsWithToLong(){
         assertFalse(of(1,2,3,4,5,6)
-                .endsWithIterable(Arrays.asList(0,1,2,3,4,5,6)));
+                .endsWith(Arrays.asList(0,1,2,3,4,5,6)));
     }
     @Test
     public void endsWithEmpty(){
         assertTrue(of(1,2,3,4,5,6)
-                .endsWithIterable(Arrays.asList()));
+                .endsWith(Arrays.asList()));
     }
     @Test
     public void endsWithWhenEmpty(){
         assertFalse(of()
-                .endsWithIterable(Arrays.asList(1,2,3,4,5,6)));
+                .endsWith(Arrays.asList(1,2,3,4,5,6)));
     }
     @Test
     public void endsWithBothEmpty(){
         assertTrue(ReactiveSeq.<Integer>of()
-                .endsWithIterable(Arrays.asList()));
+                .endsWith(Arrays.asList()));
     }
-    @Test
-    public void endsWithStream(){
-        assertTrue(of(1,2,3,4,5,6)
-                .endsWith(Stream.of(5,6)));
-    }
-    @Test
-    public void endsWithFalseStream(){
-        assertFalse(of(1,2,3,4,5,6)
-                .endsWith(Stream.of(5,6,7)));
-    }
-    @Test
-    public void endsWithToLongStream(){
-        assertFalse(of(1,2,3,4,5,6)
-                .endsWith(Stream.of(0,1,2,3,4,5,6)));
-    }
-    @Test
-    public void endsWithEmptyStream(){
-        assertTrue(of(1,2,3,4,5,6)
-                .endsWith(Stream.of()));
-    }
-    @Test
-    public void endsWithWhenEmptyStream(){
-        assertFalse(of()
-                .endsWith(Stream.of(1,2,3,4,5,6)));
-    }
-    @Test
-    public void endsWithBothEmptyStream(){
-        assertTrue(ReactiveSeq.<Integer>of()
-                .endsWith(Stream.of()));
-    }
+
     @Test
     public void testJoin() {
         assertEquals("123".length(),of(1, 2, 3).join().length());
@@ -160,7 +130,7 @@ public abstract class AbstractFoldableTest {
     public void testLazyCollection(){
         Collection<Integer> col = of(1,2,3,4,5)
                                             .to()
-                                            .lazyCollectionSynchronized();
+                                            .lazyCollection();
         System.out.println("takeOne!");
         col.forEach(System.out::println);
         assertThat(col.size(),equalTo(5));
@@ -169,11 +139,11 @@ public abstract class AbstractFoldableTest {
         for(int i=0;i<100;i++){
             Supplier<Folds<String>> s = () -> of("a", "b", "c");
 
-            assertTrue(s.get().reduce("", String::concat).contains("a"));
-            assertTrue(s.get().reduce("", String::concat).contains("b"));
-            assertTrue(s.get().reduce("", String::concat).contains("c"));
+            assertTrue(s.get().foldLeft("", String::concat).contains("a"));
+            assertTrue(s.get().foldLeft("", String::concat).contains("b"));
+            assertTrue(s.get().foldLeft("", String::concat).contains("c"));
 
-            assertEquals(3, (int) s.get().reduce(0, (u, t) -> u + t.length()));
+            assertEquals(3, (int) s.get().foldLeft(0, (u, t) -> u + t.length()));
 
 
             assertEquals(3, (int) s.get().foldRight(0, (t, u) -> u + t.length()));
@@ -195,13 +165,13 @@ public abstract class AbstractFoldableTest {
         Supplier<Folds<String>> s = () -> of("a", "b", "c");
 
 
-        assertTrue(s.get().reduce(new StringBuilder(), (u, t) -> u.append("-").append(t)).toString().contains("a"));
-        assertTrue(s.get().reduce(new StringBuilder(), (u, t) -> u.append("-").append(t)).toString().contains("b"));
-        assertTrue(s.get().reduce(new StringBuilder(), (u, t) -> u.append("-").append(t)).toString().contains("c"));
-        assertTrue(s.get().reduce(new StringBuilder(), (u, t) -> u.append("-").append(t)).toString().contains("-"));
+        assertTrue(s.get().foldLeft(new StringBuilder(), (u, t) -> u.append("-").append(t)).toString().contains("a"));
+        assertTrue(s.get().foldLeft(new StringBuilder(), (u, t) -> u.append("-").append(t)).toString().contains("b"));
+        assertTrue(s.get().foldLeft(new StringBuilder(), (u, t) -> u.append("-").append(t)).toString().contains("c"));
+        assertTrue(s.get().foldLeft(new StringBuilder(), (u, t) -> u.append("-").append(t)).toString().contains("-"));
 
 
-        assertEquals(3, (int) s.get().reduce(0, (u, t) -> u + t.length()));
+        assertEquals(3, (int) s.get().foldLeft(0, (u, t) -> u + t.length()));
 
 
     }
@@ -218,7 +188,7 @@ public abstract class AbstractFoldableTest {
 
 
     }
-
+/**
     @Test
     public void findAny(){
         assertThat(of(1,2,3,4,5).findAny().get(),lessThan(6));
@@ -227,6 +197,7 @@ public abstract class AbstractFoldableTest {
     public void findFirst(){
         assertThat(of(1,2,3,4,5).findFirst().get(),lessThan(6));
     }
+
     @Test
     public void visit(){
 
@@ -260,19 +231,19 @@ public abstract class AbstractFoldableTest {
         String res= of(1,2,3).visit((x,xs)-> xs.join(x>2? "hello" : "world"),()->"EMPTY");
         assertThat(res,equalTo("2world3"));
     }
-
+**/
     @Test
     public void testCollectable(){
         assertThat(of(1,2,3).stream().anyMatch(i->i==2),equalTo(true));
     }
     @Test
     public void testGroupByEager() {
-        Map<Integer, ListX<Integer>> map1 =of(1, 2, 3, 4).groupBy(i -> i % 2);
+        HashMap<Integer, Vector<Integer>> map1 =of(1, 2, 3, 4).groupBy(i -> i % 2);
 
-        assertThat(map1.get(0),hasItem(2));
-        assertThat(map1.get(0),hasItem(4));
-        assertThat(map1.get(1),hasItem(1));
-        assertThat(map1.get(1),hasItem(3));
+        assertThat(map1.getOrElse(0,Vector.empty()),hasItem(2));
+        assertThat(map1.getOrElse(0,Vector.empty()),hasItem(4));
+        assertThat(map1.getOrElse(1,Vector.empty()),hasItem(1));
+        assertThat(map1.getOrElse(1,Vector.empty()),hasItem(3));
 
         assertEquals(2, map1.size());
 

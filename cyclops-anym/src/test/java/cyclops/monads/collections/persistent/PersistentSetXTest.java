@@ -1,6 +1,6 @@
 package cyclops.monads.collections.persistent;
 
-import com.oath.anym.AnyMSeq;
+import com.oath.cyclops.anym.AnyMSeq;
 import cyclops.reactive.collections.immutable.PersistentSetX;
 import cyclops.companion.Reducers;
 import cyclops.monads.AnyM;
@@ -20,21 +20,11 @@ public class PersistentSetXTest extends AbstractAnyMSeqTest<Witness.persistentSe
 		return AnyM.fromPersistentSetX(PersistentSetX.of(values));
 	}
 
-	/* (non-Javadoc)
-	 * @see com.oath.cyclops.function.collections.extensions.AbstractCollectionXTest#zero()
-	 */
 	@Override
 	public <T> AnyMSeq<Witness.persistentSetX,T> empty() {
 		return AnyM.fromPersistentSetX(PersistentSetX.empty());
 	}
-	 /* (non-Javadoc)
-     * @see com.oath.cyclops.function.collections.extensions.AbstractAnyMSeqTest#whenGreaterThan2()
-     */
-    @Override
-    @Test
-    public void whenGreaterThan2() {
 
-    }
 
 	@Test
 	public void testRecover1(){
@@ -45,10 +35,7 @@ public class PersistentSetXTest extends AbstractAnyMSeqTest<Witness.persistentSe
 		assertThat(of(1,2,3).map(e->{throw new RuntimeException();}).recover(RuntimeException.class,e->"hello").join(" "),equalTo("hello"));
 	}
 
-    @Test
-    public void testRetry(){
-        of(1,2,3).retry(i->i+2).printOut();
-    }
+
     @Test @Ignore
     public void testSorted() {
 

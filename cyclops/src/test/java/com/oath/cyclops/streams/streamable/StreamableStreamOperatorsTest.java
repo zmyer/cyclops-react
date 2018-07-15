@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 import org.junit.Test;
 
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 public class StreamableStreamOperatorsTest {
 	 public static <U> Streamable<U> of(U... array){
 		 return Streamable.of(array);
@@ -63,11 +63,11 @@ public class StreamableStreamOperatorsTest {
 	}
 	@Test
 	public void testFindFirst(){
-		assertThat(Arrays.asList(1,2,3),hasItem(of(1,2,3,4,5).filter(it -> it <3).findFirst().get()));
+		assertThat(Arrays.asList(1,2,3),hasItem(of(1,2,3,4,5).filter(it -> it <3).headOption().orElse(-1)));
 	}
 	@Test
 	public void testFindAny(){
-		assertThat(Arrays.asList(1,2,3),hasItem(of(1,2,3,4,5).filter(it -> it <3).findAny().get()));
+		assertThat(Arrays.asList(1,2,3),hasItem(of(1,2,3,4,5).filter(it -> it <3).headOption().orElse(-1)));
 	}
 	@Test
 	public void testDistinct(){

@@ -1,10 +1,12 @@
 package cyclops.streams.push.reactivestreamspath;
 
 import com.oath.cyclops.util.SimpleTimer;
-import cyclops.reactive.collections.mutable.ListX;
+
+import cyclops.data.TreeSet;
+import cyclops.data.Vector;
 import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.Spouts;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 import lombok.Value;
 import org.junit.Test;
 
@@ -29,7 +31,7 @@ public class BatchingRSTest {
 				.to(Streamable::fromStream).toList().size(),equalTo(2));
 		assertThat(Spouts.of(1,2,3,4,5,6)
 				.groupedUntil(i->i%3==0)
-				.to(Streamable::fromStream).toList().get(0),equalTo(Arrays.asList(1,2,3)));
+				.to(Streamable::fromStream).toList().get(0),equalTo(Vector.of(1,2,3)));
 	}
 	@Test
 	public void batchWhile(){
@@ -39,28 +41,28 @@ public class BatchingRSTest {
 				.size(),equalTo(2));
 		assertThat(Spouts.of(1,2,3,4,5,6)
 				.groupedWhile(i->i%3!=0)
-				.to(Streamable::fromStream).toList(),equalTo(Arrays.asList(Arrays.asList(1,2,3),Arrays.asList(4,5,6))));
+				.to(Streamable::fromStream).toList(),equalTo(Arrays.asList(Vector.of(1,2,3),Vector.of(4,5,6))));
 	}
 	@Test
 	public void batchUntilCollection(){
 		assertThat(Spouts.of(1,2,3,4,5,6)
-				.groupedUntil(i->i%3==0,()->new ArrayList<>())
+				.groupedUntil(i->i%3==0,()->Vector.empty())
 				.to(Streamable::fromStream).toList().size(),equalTo(2));
 		assertThat(Spouts.of(1,2,3,4,5,6)
-				.groupedUntil(i->i%3==0,()->new ArrayList<>())
-				.to(Streamable::fromStream).toList().get(0),equalTo(Arrays.asList(1,2,3)));
+				.groupedUntil(i->i%3==0,()->Vector.empty())
+				.to(Streamable::fromStream).toList().get(0),equalTo(Vector.of(1,2,3)));
 	}
 	@Test
 	public void batchWhileCollection(){
 		System.out.println("*"+Spouts.of(1,2,3,4,5,6)
-				.groupedWhile(i->i%3!=0,()->new ArrayList<>())
+				.groupedWhile(i->i%3!=0,()-> Vector.empty())
 				.to(Streamable::fromStream).toList());
 		assertThat(Spouts.of(1,2,3,4,5,6)
-				.groupedWhile(i->i%3!=0,()->new ArrayList<>())
+				.groupedWhile(i->i%3!=0,()->Vector.empty())
 				.to(Streamable::fromStream).toList().size(),equalTo(2));
 		assertThat(Spouts.of(1,2,3,4,5,6)
-				.groupedWhile(i->i%3!=0,()->new ArrayList<>())
-				.to(Streamable::fromStream).toList(),equalTo(Arrays.asList(Arrays.asList(1,2,3),Arrays.asList(4,5,6))));
+				.groupedWhile(i->i%3!=0,()->Vector.empty())
+				.to(Streamable::fromStream).toList(),equalTo(Arrays.asList(Vector.of(1,2,3),Vector.of(4,5,6))));
 	}
 	@Test
 	public void batchByTime2(){
@@ -160,7 +162,7 @@ public class BatchingRSTest {
 				.grouped(10)
 				.onePer(1, TimeUnit.MICROSECONDS)
 				.peek(batch -> System.out.println("batched : " + batch))
-				.flatMap(Collection::stream)
+				.concatMap(i->i)
 				.peek(individual -> System.out.println("Flattened : "
 						+ individual))
 				.forEach(a->{});
@@ -263,15 +265,15 @@ public class BatchingRSTest {
 	public void batchBySizeAndTimeSizeCollection(){
 
 		assertThat(of(1,2,3,4,5,6)
-						.groupedBySizeAndTime(3,10,TimeUnit.SECONDS,()->new ArrayList<>())
+						.groupedBySizeAndTime(3, 10, TimeUnit.SECONDS, () -> Vector.empty())
 						.to(Streamable::fromStream).toList().get(0)
 						.size(),is(3));
 	}
 	@Test
 	public void batchBySizeAndTimeSizeCollectionIterator(){
 
-		Iterator<ArrayList<Integer>> it = of(1, 2, 3, 4, 5, 6)
-				.groupedBySizeAndTime(3, 10, TimeUnit.SECONDS, () -> new ArrayList<>()).iterator();
+		Iterator<Vector<Integer>> it = of(1, 2, 3, 4, 5, 6)
+				.groupedBySizeAndTime(3, 10, TimeUnit.SECONDS, () -> Vector.empty()).iterator();
 		assertThat(ReactiveSeq.fromIterator(it)
 				.to(Streamable::fromStream).toList().get(0)
 				.size(),is(3));
@@ -305,7 +307,7 @@ public class BatchingRSTest {
 
 		for(int i=0;i<10;i++){
 			System.out.println(i);
-			List<ListX<Integer>> list = of(1,2,3,4,5,6)
+			List<Vector<Integer>> list = of(1,2,3,4,5,6)
 					.groupedBySizeAndTime(10,1,TimeUnit.MICROSECONDS)
 					.to(Streamable::fromStream).toList();
 
@@ -319,8 +321,8 @@ public class BatchingRSTest {
 
 		for(int i=0;i<10;i++){
 			System.out.println(i);
-			List<ArrayList<Integer>> list = of(1,2,3,4,5,6)
-					.groupedBySizeAndTime(10,1,TimeUnit.MICROSECONDS,()->new ArrayList<>())
+			List<Vector<Integer>> list = of(1,2,3,4,5,6)
+					.groupedBySizeAndTime(10,1,TimeUnit.MICROSECONDS,()->Vector.empty())
 					.to(Streamable::fromStream).toList();
 
 			assertThat(list
@@ -333,7 +335,7 @@ public class BatchingRSTest {
 
 		for(int i=0;i<10;i++){
 			System.out.println(i);
-			List<ListX<Integer>> list = of(1,2,3,4,5,6)
+			List<Vector<Integer>> list = of(1,2,3,4,5,6)
 					.map(n-> n==6? sleep(1) : n)
 					.groupedBySizeAndTime(10,1,TimeUnit.MICROSECONDS)
 
@@ -349,14 +351,14 @@ public class BatchingRSTest {
 
 	@Test
 	public void batchBySizeSet(){
-		System.out.println("List = " + of(1,1,1,1,1,1).grouped(3,()->new TreeSet<>()).to(Streamable::fromStream).toList());
-		assertThat(of(1,1,1,1,1,1).grouped(3,()->new TreeSet<>()).to(Streamable::fromStream).toList().get(0).size(),is(1));
-		assertThat(of(1,1,1,1,1,1).grouped(3,()->new TreeSet<>()).to(Streamable::fromStream).toList().size(),is(1));
+		System.out.println("List = " + of(1,1,1,1,1,1).grouped(3,()->TreeSet.empty()).to(Streamable::fromStream).toList());
+		assertThat(of(1,1,1,1,1,1).grouped(3,()-> TreeSet.empty()).to(Streamable::fromStream).toList().get(0).size(),is(1));
+		assertThat(of(1,1,1,1,1,1).grouped(3,()->TreeSet.empty()).to(Streamable::fromStream).toList().size(),is(1));
 	}
 	@Test
 	public void batchBySizeSetEmpty(){
 
-		assertThat(of().grouped(3,()->new TreeSet<>()).to(Streamable::fromStream).toList().size(),is(0));
+		assertThat(Spouts.<Integer>of().grouped(3,()->TreeSet.empty()).to(Streamable::fromStream).toList().size(),is(0));
 	}
 	@Test
 	public void batchBySizeInternalSize(){
@@ -400,7 +402,6 @@ public class BatchingRSTest {
 	@Test
 	public void xPer(){
 		SimpleTimer timer = new SimpleTimer();
-		System.out.println(of(1,2,3,4,5,6).xPer(6,1000,TimeUnit.NANOSECONDS).to(Streamable::fromStream).collect(Collectors.toList()));
 		assertThat(of(1,2,3,4,5,6).xPer(6,100000000,TimeUnit.NANOSECONDS).to(Streamable::fromStream).collect(Collectors.toList()).size(),is(6));
 		assertThat(timer.getElapsedNanoseconds(),lessThan(60000000l));
 	}
@@ -411,7 +412,7 @@ public class BatchingRSTest {
 	@Test
 	public void batchByTimeSet(){
 
-		assertThat(of(1,1,1,1,1,1).groupedByTime(1500,TimeUnit.MICROSECONDS,()-> new TreeSet<>()).to(Streamable::fromStream).toList().get(0).size(),is(1));
+		assertThat(of(1,1,1,1,1,1).groupedByTime(1500,TimeUnit.MICROSECONDS,()-> TreeSet.empty()).to(Streamable::fromStream).toList().get(0).size(),is(1));
 	}
 	@Test
 	public void batchByTimeInternalSize(){
@@ -419,7 +420,7 @@ public class BatchingRSTest {
 	}
 	@Test
 	public void batchByTimeInternalSizeCollection(){
-		assertThat(of(1,2,3,4,5,6).groupedByTime(1,TimeUnit.NANOSECONDS,()->new ArrayList<>()).to(Streamable::fromStream).collect(Collectors.toList()).size(),greaterThan(5));
+		assertThat(of(1,2,3,4,5,6).groupedByTime(1,TimeUnit.NANOSECONDS,()->Vector.empty()).to(Streamable::fromStream).collect(Collectors.toList()).size(),greaterThan(5));
 	}
 
 

@@ -1,6 +1,7 @@
 package cyclops.instances.reactive.collections.immutable;
 
-import com.oath.cyclops.hkt.DataWitness.linkedListX;
+import static com.oath.cyclops.data.ReactiveWitness.*;
+
 import com.oath.cyclops.hkt.Higher;
 import com.oath.cyclops.types.persistent.PersistentList;
 import cyclops.arrow.Cokleisli;
@@ -207,7 +208,7 @@ public class LinkedListXInstances {
 
   public static <T,R> Foldable<linkedListX> foldable(){
     BiFunction<Monoid<T>,Higher<linkedListX,T>,T> foldRightFn =  (m, l)-> narrowK(l).foldRight(m);
-    BiFunction<Monoid<T>,Higher<linkedListX,T>,T> foldLeftFn = (m, l)-> narrowK(l).reduce(m);
+    BiFunction<Monoid<T>,Higher<linkedListX,T>,T> foldLeftFn = (m, l)-> narrowK(l).foldLeft(m);
     Function3<Monoid<R>, Function<T, R>, Higher<linkedListX, T>, R> foldMapFn = (m, f, l)->narrowK(l).map(f).foldLeft(m);
 
     return General.foldable(foldRightFn, foldLeftFn,foldMapFn);

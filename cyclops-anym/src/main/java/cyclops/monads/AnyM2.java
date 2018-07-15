@@ -1,21 +1,22 @@
 package cyclops.monads;
 
-import com.oath.anym.AnyMSeq;
-import com.oath.anym.AnyMValue;
+import com.oath.cyclops.anym.AnyMSeq;
+import com.oath.cyclops.anym.AnyMValue;
+import com.oath.cyclops.ReactiveConvertableSequence;
 import com.oath.cyclops.data.collections.extensions.IndexedSequenceX;
 import com.oath.cyclops.types.Unwrapable;
 
-import com.oath.anym.extensability.MonadAdapter;
+import com.oath.cyclops.anym.extensability.MonadAdapter;
 import com.oath.cyclops.types.factory.EmptyUnit;
 import com.oath.cyclops.types.factory.Unit;
 import com.oath.cyclops.types.foldable.Folds;
 import com.oath.cyclops.types.functor.Transformable;
 import com.oath.cyclops.types.stream.ToStream;
-import cyclops.companion.Streams;
 import cyclops.control.Future;
+import cyclops.data.Seq;
+import cyclops.data.tuple.Tuple2;
 import cyclops.reactive.collections.mutable.ListX;
 import cyclops.control.*;
-import cyclops.control.Eval;
 import cyclops.control.Maybe;
 import cyclops.function.*;
 import cyclops.monads.function.AnyMFunction1;
@@ -24,13 +25,12 @@ import cyclops.monads.transformers.ListT;
 import cyclops.monads.transformers.FutureT;
 import cyclops.futurestream.FutureStream;
 import cyclops.reactive.ReactiveSeq;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 
 import org.reactivestreams.Publisher;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.*;
 
@@ -72,9 +72,35 @@ public interface AnyM2<W extends WitnessType<W>,T2,T> extends   AnyM<W,T>,
                                                                 Transformable<T>,
                                                                 ToStream<T>,
                                                                 Publisher<T> {
+
     @Override
-    default ReactiveSeq<T> reactiveSeq() {
-        return Streams.oneShotStream(StreamSupport.stream(this.spliterator(),false));
+    default AnyM2<W, T2,Seq<T>> aggregate(AnyM<W, T> next) {
+        return (AnyM2<W, T2,Seq<T>>)AnyM.super.aggregate(next);
+    }
+
+    @Override
+    default <U> AnyM2<W, T2, U> ofType(final Class<? extends U> type) {
+        return (AnyM2<W, T2, U>)AnyM.super.ofType(type);
+    }
+
+    @Override
+    default AnyM2<W, T2, T> filterNot(final Predicate<? super T> predicate) {
+        return (AnyM2<W, T2, T>)AnyM.super.filterNot(predicate);
+    }
+
+    @Override
+    default AnyM2<W, T2,T> notNull() {
+        return (AnyM2<W, T2, T>)AnyM.super.notNull();
+    }
+
+    @Override
+    default <T2, R> AnyM2<W, T2, R> zip(final AnyM<W, ? extends T2> anyM, final BiFunction<? super T, ? super T2, ? extends R> fn) {
+        return (AnyM2<W, T2, R>)AnyM.super.zip(anyM,fn);
+    }
+
+    @Override
+    default <U> AnyM2<W, T2,Tuple2<T, U>> zip(final AnyM<W, ? extends U> other) {
+        return (AnyM2)AnyM.super.zip(other);
     }
 
     /**
@@ -106,13 +132,13 @@ public interface AnyM2<W extends WitnessType<W>,T2,T> extends   AnyM<W,T>,
 
     }
 
-    default <U> AnyMSeq<W,U> unitIterator(Iterator<U> U){
-        return (AnyMSeq<W,U>)adapter().unitIterable(()->U);
+    default <U> AnyM<W,U> unitIterable(Iterable<U> U){
+        return (AnyM<W,U>)adapter().unitIterable(U);
     }
 
     <R> AnyM2<W,T2,R> concatMap(Function<? super T, ? extends Iterable<? extends R>> fn);
-    <R> AnyM2<W,T2,R> flatMapP(Function<? super T, ? extends Publisher<? extends R>> fn);
-    <R> AnyM2<W,T2,R> flatMapS(Function<? super T, ? extends Stream<? extends R>> fn);
+    <R> AnyM2<W,T2,R> mergeMap(Function<? super T, ? extends Publisher<? extends R>> fn);
+
     default <R> AnyM2<W,T2,R> flatMapA(Function<? super T, ? extends AnyM<W, ? extends R>> fn){
         return (AnyM2<W,T2,R>)adapter().flatMap(this, fn);
     }
@@ -123,15 +149,7 @@ public interface AnyM2<W extends WitnessType<W>,T2,T> extends   AnyM<W,T>,
         return  (AnyM2<W,T2,T>)adapter().unitIterable(t);
     }
 
-    @Override
-    default <R> AnyM2<W,T2,R> retry(final Function<? super T, ? extends R> fn) {
-        return (AnyM2<W,T2,R>)AnyM.super.retry(fn);
-    }
 
-    @Override
-    default <R> AnyM2<W,T2,R> retry(final Function<? super T, ? extends R> fn, final int retries, final long delay, final TimeUnit timeUnit) {
-        return (AnyM2<W,T2,R>)AnyM.super.retry(fn,retries,delay,timeUnit);
-    }
 
 
 
@@ -217,12 +235,13 @@ public interface AnyM2<W extends WitnessType<W>,T2,T> extends   AnyM<W,T>,
     }
 
 
-    default <R> AnyM2<W,T2,R> coflatMapA(final Function<? super AnyM<W, T>, R> mapper) {
+    default <R> AnyM2<W,T2,R> coflatMap(final Function<? super AnyM<W, T>, R> mapper) {
         return unit(Lambda.λ(()->mapper.apply(this))).map(Supplier::get);
     }
 
 
-    default AnyM2<W,T2,AnyM<W,T>> nestA() {
+
+    default AnyM2<W,T2,AnyM<W,T>> nest() {
         return unit(this);
     }
 
@@ -287,11 +306,11 @@ public interface AnyM2<W extends WitnessType<W>,T2,T> extends   AnyM<W,T>,
      * }
      * </pre>
      *
-     */
+
     @Override
     default ReactiveSeq<T> stream(){
         return ReactiveSeq.fromIterable(this);
-    }
+    } */
 
 
 
@@ -351,8 +370,8 @@ public interface AnyM2<W extends WitnessType<W>,T2,T> extends   AnyM<W,T>,
      * @return Aggregated Monad
      */
     default AnyM2<W,T2,List<T>> aggregate(AnyM2<W, T2,T> next){
-        return unit(Stream.concat(matchable().visit(value -> value.stream(), seq -> seq.stream()), next.matchable()
-                                  .visit(value -> value.stream(),
+        return unit(Stream.concat(matchable().fold(value -> value.stream(), seq -> seq.stream()), next.matchable()
+                                  .fold(value -> value.stream(),
                                          seq -> seq.stream()))
                     .collect(Collectors.toList()));
     }
@@ -419,7 +438,7 @@ public interface AnyM2<W extends WitnessType<W>,T2,T> extends   AnyM<W,T>,
      * @return Monad with a List
      */
     public static <W extends WitnessType<W>,T1,T2> AnyM2<W,T2,ListX<T1>> sequence(final Collection<? extends AnyM2<W,T2,T1>> seq, W w) {
-        return sequence(seq.stream(),w).map(s->ReactiveSeq.fromStream(s).to().listX(LAZY));
+        return sequence(seq.stream(),w).map(s->ReactiveSeq.fromStream(s).to(ReactiveConvertableSequence::converter).listX(LAZY));
     }
 
     /**

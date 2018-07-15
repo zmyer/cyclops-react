@@ -1,6 +1,5 @@
 package cyclops.data;
 
-import com.oath.cyclops.types.stream.HeadAndTail;
 import com.oath.cyclops.types.traversable.IterableX;
 import cyclops.companion.Monoids;
 import cyclops.control.Maybe;
@@ -86,20 +85,10 @@ public class TreeSetTest extends BaseImmutableSortedSetTest{
 
         ImmutableSortedSet<Number> set = this.<Number>of(Comparators.identityComparator(),1, 10l, 2, 20l, 3);
         ImmutableSortedSet<Integer> setA = set.ofType(Integer.class);
-        assertThat(setA.toListX(),containsInAnyOrder(1, 2, 3));
+        assertThat(setA.toList(),containsInAnyOrder(1, 2, 3));
 
     }
-    @Test
-    public void headTailReplayNoOrd() {
 
-        IterableX<String> helloWorld = of("hello", "world", "last");
-        HeadAndTail<String> headAndTail = helloWorld.headAndTail();
-        String head = headAndTail.head();
-        assertThat(head, isOneOf("hello","world","last"));
-
-
-
-    }
   @Test
   public void lastIndexOf(){
 
@@ -110,4 +99,11 @@ public class TreeSetTest extends BaseImmutableSortedSetTest{
     MatcherAssert.assertThat(of(1,2,3,2).lastIndexOf(e->Objects.equals(2,e)),
       equalTo(of(1,2,3,2).indexOf(e->Objects.equals(2,e))));
   }
+    @Test
+    public void lastIndexOfSlize(){
+        MatcherAssert.assertThat(empty().lastIndexOfSlice(Seq.of(1,2,3)),equalTo(Maybe.nothing()));
+        MatcherAssert.assertThat(of(1,2,3).lastIndexOfSlice(Seq.of(1,2,3)),equalTo(Maybe.just(0l)));
+        MatcherAssert.assertThat(of(1).lastIndexOfSlice(Seq.of(1,2,3)),equalTo(Maybe.nothing()));
+        MatcherAssert.assertThat(of(0,1,2,3,4,5,6,1,2,3).lastIndexOfSlice(Seq.of(1,2,3)),equalTo(Maybe.just(1l)));
+    }
 }

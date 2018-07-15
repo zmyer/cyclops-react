@@ -1,7 +1,6 @@
 package com.oath.cyclops.internal.react;
 
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -22,10 +21,10 @@ import com.oath.cyclops.react.collectors.lazy.BatchingCollector;
 import com.oath.cyclops.react.collectors.lazy.LazyResultConsumer;
 import com.oath.cyclops.react.collectors.lazy.MaxActive;
 import com.oath.cyclops.react.threads.ReactPool;
-import com.oath.cyclops.types.stream.HeadAndTail;
-import com.oath.cyclops.types.stream.HotStream;
-import com.oath.cyclops.types.stream.PausableHotStream;
+import com.oath.cyclops.types.stream.Connectable;
+import com.oath.cyclops.types.stream.PausableConnectable;
 import cyclops.companion.Streams;
+import cyclops.data.Seq;
 import cyclops.futurestream.FutureStream;
 
 import cyclops.function.Monoid;
@@ -34,7 +33,6 @@ import cyclops.futurestream.LazyReact;
 import cyclops.reactive.ReactiveSeq;
 import com.oath.cyclops.async.QueueFactories;
 import com.oath.cyclops.async.adapters.QueueFactory;
-import cyclops.reactive.collections.mutable.ListX;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -190,31 +188,31 @@ public class FutureStreamImpl<U> implements FutureStream<U> {
     }
 
     @Override
-    public HotStream<U> schedule(final String cron, final ScheduledExecutorService ex) {
+    public Connectable<U> schedule(final String cron, final ScheduledExecutorService ex) {
         return ReactiveSeq.<U> fromStream(this.stream())
                           .schedule(cron, ex);
     }
 
     @Override
-    public HotStream<U> scheduleFixedDelay(final long delay, final ScheduledExecutorService ex) {
+    public Connectable<U> scheduleFixedDelay(final long delay, final ScheduledExecutorService ex) {
         return ReactiveSeq.<U> fromStream(this.stream())
                           .scheduleFixedDelay(delay, ex);
     }
 
     @Override
-    public HotStream<U> scheduleFixedRate(final long rate, final ScheduledExecutorService ex) {
+    public Connectable<U> scheduleFixedRate(final long rate, final ScheduledExecutorService ex) {
         return ReactiveSeq.<U> fromStream(this.stream())
                           .scheduleFixedRate(rate, ex);
     }
 
     @Override
-    public <T> FutureStream<T> unitIterator(final Iterator<T> it) {
-        return simpleReact.from(it);
+    public <T> FutureStream<T> unitIterable(final Iterable<T> it) {
+        return simpleReact.fromIterable(it);
     }
 
     @Override
-    public FutureStream<U> appendAll(final U value) {
-        return fromStream(stream().appendAll(value));
+    public FutureStream<U> append(final U value) {
+        return fromStream(stream().append(value));
     }
 
     @Override
@@ -229,29 +227,29 @@ public class FutureStreamImpl<U> implements FutureStream<U> {
     }
 
     @Override
-    public HotStream<U> hotStream(final Executor e) {
+    public Connectable<U> hotStream(final Executor e) {
         return Streams.hotStream(this, e);
     }
 
     @Override
-    public HotStream<U> primedHotStream(final Executor e) {
+    public Connectable<U> primedHotStream(final Executor e) {
         return Streams.primedHotStream(this, e);
     }
 
     @Override
-    public PausableHotStream<U> pausableHotStream(final Executor e) {
+    public PausableConnectable<U> pausableHotStream(final Executor e) {
         return Streams.pausableHotStream(this, e);
     }
 
     @Override
-    public PausableHotStream<U> primedPausableHotStream(final Executor e) {
+    public PausableConnectable<U> primedPausableHotStream(final Executor e) {
         return Streams.primedPausableHotStream(this, e);
     }
 
 
 
     @Override
-    public <R> R visit(Function<? super ReactiveSeq<U>, ? extends R> sync, Function<? super ReactiveSeq<U>, ? extends R> reactiveStreams, Function<? super ReactiveSeq<U>, ? extends R> asyncNoBackPressure) {
+    public <R> R fold(Function<? super ReactiveSeq<U>, ? extends R> sync, Function<? super ReactiveSeq<U>, ? extends R> reactiveStreams, Function<? super ReactiveSeq<U>, ? extends R> asyncNoBackPressure) {
         return sync.apply(this);
     }
 
@@ -263,21 +261,21 @@ public class FutureStreamImpl<U> implements FutureStream<U> {
     }
 
     @Override
-    public <T> T foldRightMapToType(final Reducer<T,U> reducer) {
-        return reducer.mapReduce(reverse());
+    public <T> T foldMapRight(final Reducer<T,U> reducer) {
+        return reducer.foldMap(reverse());
 
     }
 
     @Override
-    public <R> R mapReduce(final Reducer<R,U> reducer) {
-        return reducer.mapReduce(this);
+    public <R> R foldMap(final Reducer<R,U> reducer) {
+        return reducer.foldMap(this);
     }
 
     @Override
-    public <R> R mapReduce(final Function<? super U, ? extends R> mapper, final Monoid<R> reducer) {
+    public <R> R foldMap(final Function<? super U, ? extends R> mapper, final Monoid<R> reducer) {
 
         return Reducer.fromMonoid(reducer,(U a)-> (R)mapper.apply(a))
-                      .mapReduce(this);
+                      .foldMap(this);
     }
 
     @Override
@@ -285,13 +283,9 @@ public class FutureStreamImpl<U> implements FutureStream<U> {
         return reduce(reducer.zero(),reducer);
     }
 
-    @Override
-    public ListX<U> reduce(final Stream<? extends Monoid<U>> reducers) {
-        return Streams.reduce(this, reducers);
-    }
 
     @Override
-    public ListX<U> reduce(final Iterable<? extends Monoid<U>> reducers) {
+    public Seq<U> reduce(final Iterable<? extends Monoid<U>> reducers) {
         return Streams.reduce(this, reducers);
     }
 
@@ -355,12 +349,5 @@ public class FutureStreamImpl<U> implements FutureStream<U> {
         return Streams.join(this, sep, start, end);
     }
 
-    /* (non-Javadoc)
-     * @see cyclops2.stream.ReactiveSeq#headAndTail()
-     */
-    @Override
-    public HeadAndTail<U> headAndTail() {
-        return Streams.headAndTail(this);
-    }
 
 }

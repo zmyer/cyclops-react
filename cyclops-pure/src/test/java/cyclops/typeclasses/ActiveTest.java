@@ -1,12 +1,19 @@
 package cyclops.typeclasses;
 
+import com.oath.cyclops.hkt.DataWitness.lazySeq;
+import com.oath.cyclops.hkt.DataWitness.seq;
 import com.oath.cyclops.hkt.Higher;
+import cyclops.data.LazySeq;
+import cyclops.data.Seq;
+import cyclops.data.Vector;
+import cyclops.instances.data.LazySeqInstances;
+import cyclops.instances.data.SeqInstances;
 import cyclops.reactive.collections.immutable.VectorX;
 import cyclops.reactive.collections.mutable.ListX;
 import cyclops.companion.Monoids;
 import cyclops.control.Maybe;
 import cyclops.control.Either;
-import com.oath.cyclops.hkt.DataWitness.list;
+import com.oath.cyclops.data.ReactiveWitness.list;
 import com.oath.cyclops.hkt.DataWitness.option;
 import com.oath.cyclops.hkt.DataWitness.reactiveSeq;
 import cyclops.hkt.Active;
@@ -27,11 +34,11 @@ import static org.junit.Assert.*;
  */
 public class ActiveTest {
     Active<list,Integer> active = Active.of(ListX.of(1,2,3), ListXInstances.definitions());
-
-
+    Active<seq,Integer> activeSeq = Active.of(Seq.of(1,2,3), SeqInstances.definitions());
+    Active<lazySeq,Integer> activeLazySeq = Active.of(LazySeq.of(1,2,3), LazySeqInstances.definitions());
     @Test
     public void toList(){
-        assertThat(ListXInstances.allTypeclasses(ListX.of(1,2,3)).toListX(),equalTo(ListX.of(1,2,3)));
+        assertThat(ListXInstances.allTypeclasses(ListX.of(1,2,3)).toLazySeq(),equalTo(LazySeq.of(1,2,3)));
     }
     @Test
     public void foldMap(){
@@ -50,7 +57,7 @@ public class ActiveTest {
     public void zipWith(){
         ListX<Integer> res =ListXInstances.allTypeclasses(ListX.of(1,2,3))
                 .zipWith(VectorXInstances.allTypeclasses(VectorX.of(10,20)), (a, b)->{
-                    return b.visit(p->a+p,()->-1);
+                    return b.fold(p->a+p,()->-1);
                 })
                 .getSingle()
                 .convert(ListX::narrowK);
@@ -71,7 +78,7 @@ public class ActiveTest {
         Active<list,Integer> list = ListXInstances.allTypeclasses(ListX.of(1,2,3));
 
         list.concreteMonoid(ListXInstances.kindKleisli(),ListXInstances.kindCokleisli())
-                .sum(ListX.of(ListX.of(1,2,3)));
+                .sum(Vector.of(ListX.of(1,2,3)));
 
         list.concreteFlatMap(ListXInstances.kindKleisli())
                 .flatMap(i->ListX.of(1,2,3));
@@ -105,11 +112,7 @@ public class ActiveTest {
         MonadRec<reactiveSeq> mr = IterableInstances.monadRec();
         mr.tailRec(0,i-> i<100_000 ? ReactiveSeq.of(Either.left(i+1)) : ReactiveSeq.of(Either.right(i+1)) )
                 .convert(ReactiveSeq::narrowK).printOut();
-        /**
-         active.concreteTailRec(ListX.kindKleisli())
-         .tailRec(0,i-> i<100_000 ? ListX.of(Xor.lazyLeft(i+1)) : ListX.of(Xor.lazyRight(i)) )
-         .concreteConversion(ListXInstances.kindCokleisli()).to(i->i).printOut();
-         **/
+
     }
     @Test
     public void concreteConversion() {
@@ -137,19 +140,48 @@ public class ActiveTest {
     }
     @Test
     public void traverse(){
-
+        System.out.println(active);
         Higher<option, Higher<list, Integer>> res = active
                 .<option,Integer>flatTraverse(applicative(), t->Maybe.just(ListX.of(t*2)));
 
-        Maybe<ListX<Integer>> raw = res.convert(Maybe::narrowK)
+        System.out.println(active);
+        System.out.println(res);
+        System.out.println(res);
+        System.out.println(res);
+
+       Maybe<ListX<Integer>> raw = res.convert(Maybe::narrowK)
                                        .map(ListX::narrowK);
+        System.out.println(raw);
         assertThat(raw,equalTo(Maybe.just(ListX.of(2,4,6))));
+    }
+    @Test
+    public void traverseSeq(){
+
+
+        Higher<option, Higher<seq, Integer>> res = activeSeq
+            .<option,Integer>flatTraverse(applicative(), t->Maybe.just(Seq.of(t*2)));
+
+        System.out.println(res);
+        Maybe<Seq<Integer>> raw = res.convert(Maybe::narrowK)
+            .map(Seq::narrowK);
+        assertThat(raw,equalTo(Maybe.just(Seq.of(2,4,6))));
+    }
+    @Test
+    public void traverseLazySeq(){
+
+        Higher<option, Higher<lazySeq, Integer>> res = activeLazySeq
+            .<option,Integer>flatTraverse(applicative(), t->Maybe.just(LazySeq.of(t*2)));
+
+        System.out.println(res);
+        Maybe<LazySeq<Integer>> raw = res.convert(Maybe::narrowK)
+            .map(LazySeq::narrowK);
+        assertThat(raw,equalTo(Maybe.just(Seq.of(2,4,6))));
     }
 
     @Test
     public void custom(){
-        Active<list, ListX<Integer>> grouped = active.custom(ListX::narrowK, l -> l.grouped(10));
-        assertThat(grouped.getActive()  ,equalTo(ListX.of(ListX.of(1,2,3))));
+        Active<list, Vector<Integer>> grouped = active.custom(ListX::narrowK, l -> l.grouped(10));
+        assertThat(grouped.getActive()  ,equalTo(ListX.of(Vector.of(1,2,3))));
 
     }
 

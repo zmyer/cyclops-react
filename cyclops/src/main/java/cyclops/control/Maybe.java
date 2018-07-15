@@ -4,8 +4,8 @@ package cyclops.control;
 import com.oath.cyclops.hkt.Higher;
 import com.oath.cyclops.types.MonadicValue;
 import com.oath.cyclops.types.Present;
-import com.oath.cyclops.types.traversable.IterableX;
 import cyclops.data.tuple.*;
+import cyclops.function.checked.CheckedSupplier;
 import cyclops.reactive.Spouts;
 import com.oath.cyclops.types.reactive.Completable;
 import cyclops.function.Monoid;
@@ -26,7 +26,6 @@ import java.io.InvalidObjectException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -91,8 +90,37 @@ return x <= 0 ? Maybe.just("done") : odd(Maybe.just(x - 1));
 public interface Maybe<T> extends Option<T> {
 
 
+    public static <T> Maybe<T> attempt(CheckedSupplier<T> s){
+        return Maybe.fromLazy(Eval.later(()->{
+            try {
+                return just(s.get());
+            } catch (Throwable throwable) {
+                return Maybe.nothing();
+            }
+        }));
+    }
+    default <R> Maybe<R> attemptMap(Function<? super T,? extends R> fn){
+        return flatMap(t->{
+            try{
+                return just(fn.apply(t));
+            }catch(Throwable e){
+                return nothing();
+            }
+        });
+
+    }
+    default <R> Maybe<R> attemptFlatMap(Function<? super T,? extends Option<? extends R>> fn){
+        return flatMap(t->{
+            try{
+                return fn.apply(t);
+            }catch(Throwable e){
+                return nothing();
+            }
+        });
+
+    }
     public static  <T,R> Maybe<R> tailRec(T initial, Function<? super T, ? extends Maybe<? extends Either<T, R>>> fn){
-        return narrowK(fn.apply(initial)).flatMap( eval -> eval.visit(s->tailRec(s,fn),p->Maybe.just(p)));
+        return narrowK(fn.apply(initial)).flatMap( eval -> eval.fold(s->tailRec(s,fn), p->Maybe.just(p)));
     }
     public static <T> Higher<option, T> widen(Maybe<T> narrow) {
     return narrow;
@@ -186,8 +214,8 @@ public interface Maybe<T> extends Option<T> {
         }
 
         @Override
-        public <R> R visit(Function<? super T2, ? extends R> some, Supplier<? extends R> none) {
-            return maybe.visit(some,none);
+        public <R> R fold(Function<? super T2, ? extends R> some, Supplier<? extends R> none) {
+            return maybe.fold(some,none);
         }
 
         @Override
@@ -301,7 +329,7 @@ public interface Maybe<T> extends Option<T> {
      * @see com.oath.cyclops.types.MonadicValue#flatMapP(java.util.function.Function)
      */
     @Override
-    default <R> Maybe<R> flatMapP(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
+    default <R> Maybe<R> mergeMap(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
         return this.flatMap(a -> {
             final Publisher<? extends R> publisher = mapper.apply(a);
             return Maybe.fromPublisher(publisher);
@@ -391,6 +419,9 @@ public interface Maybe<T> extends Option<T> {
      * {@code
      *     Maybe<Integer> maybe =  Maybe.fromEval(Eval.now(10));
      *     //Maybe[10]
+     *     Maybe<Integer> maybeNull = Maybe.fromEval(()->null);
+     *     //Maybe[null]
+     *
      *
      * }
      * </pre>
@@ -410,6 +441,9 @@ public interface Maybe<T> extends Option<T> {
 
     static <T> Maybe<T> fromEvalOptional(final Eval<Optional<T>> value){
         return new Lazy<T>(value.map(in->Maybe.<T>fromOptional(in)));
+    }
+    static <T> Maybe<T> fromLazyOption(final Supplier<Option<T>> value){
+        return new Lazy<T>(Eval.later(value).map(in->Maybe.<T>fromOption(in)));
     }
 
     /**
@@ -455,7 +489,7 @@ public interface Maybe<T> extends Option<T> {
         return Maybe.fromIterable(this);
     }
     default Option<T> eager(){
-        return visit(s->Option.some(s),()->Option.none());
+        return fold(s->Option.some(s),()->Option.none());
     }
     /**
      * <pre>
@@ -491,7 +525,7 @@ public interface Maybe<T> extends Option<T> {
 
     /**
      * Sequence operation, take a Collection of Maybes and turn it into a Maybe with a Collection
-     * Only successes are retained. By constrast with {@link Maybe#sequence(IterableX)} Maybe#zero/ None types are
+     * Only successes are retained. By constrast with {@link Maybe#sequence(Iterable)} Maybe#zero/ None types are
      * tolerated and ignored.
      *
      * <pre>
@@ -499,23 +533,23 @@ public interface Maybe<T> extends Option<T> {
      *  Maybe<Integer> just = Maybe.of(10);
     Maybe<Integer> none = Maybe.none();
      *
-     * Maybe<ListX<Integer>> maybes = Maybe.sequenceJust(ListX.of(just, none, Maybe.of(1)));
-    //Maybe.of(ListX.of(10, 1));
+     * Maybe<Seq<Integer>> maybes = Maybe.sequenceJust(Seq.of(just, none, Maybe.of(1)));
+    //Maybe.of(Seq.of(10, 1));
      * }
      * </pre>
      *
      * @param maybes Maybes to Sequence
      * @return Maybe with a List of values
      */
-    public static <T> Maybe<ReactiveSeq<T>> sequenceJust(final IterableX<? extends Maybe<T>> maybes) {
-        return sequence(maybes.filter(Maybe::isPresent).stream());
+    public static <T> Maybe<ReactiveSeq<T>> sequenceJust(final Iterable<? extends Maybe<T>> maybes) {
+        return sequence(ReactiveSeq.fromIterable(maybes).filter(Maybe::isPresent).stream());
     }
   public static  <T> Maybe<ReactiveSeq<T>> sequence(ReactiveSeq<? extends Maybe<T>> stream) {
 
     Maybe<ReactiveSeq<T>> identity = Maybe.just(ReactiveSeq.empty());
 
 
-    BiFunction<Maybe<ReactiveSeq<T>>,Maybe<T>,Maybe<ReactiveSeq<T>>> combineToStream = (acc,next) ->acc.zip(next,(a,b)->a.appendAll(b));
+    BiFunction<Maybe<ReactiveSeq<T>>,Maybe<T>,Maybe<ReactiveSeq<T>>> combineToStream = (acc,next) ->acc.zip(next,(a,b)->a.append(b));
 
     BinaryOperator<Maybe<ReactiveSeq<T>>> combineStreams = (a,b)-> a.zip(b,(z1,z2)->z1.appendStream(z2));
 
@@ -527,7 +561,7 @@ public interface Maybe<T> extends Option<T> {
   }
     /**
      * Sequence operation, take a Collection of Maybes and turn it into a Maybe with a Collection
-     * By constrast with {@link Maybe#sequenceJust(IterableX)} if any Maybe types are None / zero
+     * By constrast with {@link Maybe#sequenceJust(Iterable)} if any Maybe types are None / zero
      * the return type will be an zero Maybe / None
      *
      * <pre>
@@ -536,7 +570,7 @@ public interface Maybe<T> extends Option<T> {
      *  Maybe<Integer> just = Maybe.of(10);
     Maybe<Integer> none = Maybe.none();
      *
-     *  Maybe<ListX<Integer>> maybes = Maybe.sequence(ListX.of(just, none, Maybe.of(1)));
+     *  Maybe<Seq<Integer>> maybes = Maybe.sequence(Seq.of(just, none, Maybe.of(1)));
     //Maybe.none();
      *
      * }
@@ -546,14 +580,14 @@ public interface Maybe<T> extends Option<T> {
      * @param maybes Maybes to Sequence
      * @return  Maybe with a List of values
      */
-    public static <T> Maybe<ReactiveSeq<T>> sequence(final IterableX<? extends Maybe<T>> maybes) {
-        return sequence(maybes.stream());
+    public static <T> Maybe<ReactiveSeq<T>> sequence(final Iterable<? extends Maybe<T>> maybes) {
+        return sequence(ReactiveSeq.fromIterable(maybes));
 
     }
 
     /**
      * Sequence operation, take a Stream of Maybes and turn it into a Maybe with a Stream
-     * By constrast with {@link Maybe#sequenceJust(IterableX)} Maybe#zero/ None types are
+     * By constrast with {@link Maybe#sequenceJust(Iterable)} Maybe#zero/ None types are
      * result in the returned Maybe being Maybe.zero / None
      *
      *
@@ -588,7 +622,7 @@ public interface Maybe<T> extends Option<T> {
      * {@code
      *  Maybe<Integer> just = Maybe.of(10);
     Maybe<Integer> none = Maybe.none();
-     * Maybe<PersistentSetX<Integer>> maybes = Maybe.accumulateJust(ListX.of(just, none, Maybe.of(1)), Reducers.toPersistentSetX());
+     * Maybe<PersistentSetX<Integer>> maybes = Maybe.accumulateJust(Seq.of(just, none, Maybe.of(1)), Reducers.toPersistentSetX());
     //Maybe.of(PersistentSetX.of(10, 1)));
      *
      * }
@@ -598,8 +632,8 @@ public interface Maybe<T> extends Option<T> {
      * @param reducer Reducer to accumulate values with
      * @return Maybe with reduced value
      */
-    public static <T, R> Maybe<R> accumulateJust(final IterableX<Maybe<T>> maybes, final Reducer<R,T> reducer) {
-        return sequenceJust(maybes).map(s -> s.mapReduce(reducer));
+    public static <T, R> Maybe<R> accumulateJust(final Iterable<Maybe<T>> maybes, final Reducer<R,T> reducer) {
+        return sequenceJust(maybes).map(s -> s.foldMap(reducer));
     }
 
     /**
@@ -612,7 +646,7 @@ public interface Maybe<T> extends Option<T> {
      *  Maybe<Integer> just = Maybe.of(10);
     Maybe<Integer> none = Maybe.none();
 
-     *  Maybe<String> maybes = Maybe.accumulateJust(ListX.of(just, none, Maybe.of(1)), i -> "" + i,
+     *  Maybe<String> maybes = Maybe.accumulateJust(Seq.of(just, none, Maybe.of(1)), i -> "" + i,
     SemigroupK.stringConcat);
     //Maybe.of("101")
      *
@@ -624,7 +658,7 @@ public interface Maybe<T> extends Option<T> {
      * @param reducer Monoid to combine values from each Maybe
      * @return Maybe with reduced value
      */
-    public static <T, R> Maybe<R> accumulateJust(final IterableX<Maybe<T>> maybes, final Function<? super T, R> mapper,
+    public static <T, R> Maybe<R> accumulateJust(final Iterable<Maybe<T>> maybes, final Function<? super T, R> mapper,
                                                  final Monoid<R> reducer) {
         return sequenceJust(maybes).map(s -> s.map(mapper)
                 .reduce(reducer));
@@ -638,7 +672,7 @@ public interface Maybe<T> extends Option<T> {
      * <pre>
      * {@code
      *
-     *  Maybe<Integer> maybes = Maybe.accumulateJust(Monoids.intSum,ListX.of(just, none, Maybe.of(1)));
+     *  Maybe<Integer> maybes = Maybe.accumulateJust(Monoids.intSum,Seq.of(just, none, Maybe.of(1)));
     //Maybe.of(11)
      *
      * }
@@ -650,23 +684,15 @@ public interface Maybe<T> extends Option<T> {
      * @param reducer Monoid to combine values from each Maybe
      * @return Maybe with reduced value
      */
-    public static <T> Maybe<T> accumulateJust(final Monoid<T> reducer,final IterableX<Maybe<T>> maybes) {
+    public static <T> Maybe<T> accumulateJust(final Monoid<T> reducer,final Iterable<Maybe<T>> maybes) {
         return sequenceJust(maybes).map(s -> s.reduce(reducer));
     }
 
-  @Override
-    default <R> Maybe<R> retry(final Function<? super T, ? extends R> fn) {
-        return (Maybe<R>)Option.super.retry(fn);
-    }
+
 
     @Override
     default <U> Maybe<Tuple2<T, U>> zipWithPublisher(final Publisher<? extends U> other) {
         return (Maybe)Option.super.zipWithPublisher(other);
-    }
-
-    @Override
-    default <R> Maybe<R> retry(final Function<? super T, ? extends R> fn, final int retries, final long delay, final TimeUnit timeUnit) {
-        return (Maybe<R>)Option.super.retry(fn,retries,delay,timeUnit);
     }
 
     @Override
@@ -689,10 +715,7 @@ public interface Maybe<T> extends Option<T> {
         return (Maybe<R>)Option.super.zip4(second,third,fourth,fn);
     }
 
-    @Override
-    default <R> Maybe<R> flatMapS(final Function<? super T, ? extends Stream<? extends R>> mapper) {
-        return (Maybe<R>)Option.super.flatMapS(mapper);
-    }
+
 
     /* (non-Javadoc)
          * @see com.oath.cyclops.types.MonadicValue#forEach4(java.util.function.Function, java.util.function.BiFunction, com.oath.cyclops.util.function.TriFunction, com.oath.cyclops.util.function.QuadFunction)
@@ -798,26 +821,9 @@ public interface Maybe<T> extends Option<T> {
         return Maybe.of(unit);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * com.oath.cyclops.types.MonadicValue#coflatMap(java.util.function.Function)
-     */
-    @Override
-    default <R> Maybe<R> coflatMap(final Function<? super MonadicValue<T>, R> mapper) {
-        return (Maybe<R>) Option.super.coflatMap(mapper);
-    }
 
-    /*
-     * cojoin (non-Javadoc)
-     *
-     * @see com.oath.cyclops.types.MonadicValue#nest()
-     */
-    @Override
-    default Maybe<MonadicValue<T>> nest() {
-        return (Maybe<MonadicValue<T>>) Option.super.nest();
-    }
+
+
 
   /*
    * (non-Javadoc)
@@ -863,7 +869,7 @@ public interface Maybe<T> extends Option<T> {
      * @see com.oath.cyclops.types.foldable.Convertable#visit(java.util.function.Function, java.util.function.Supplier)
      */
     @Override
-    <R> R visit(Function<? super T, ? extends R> some, Supplier<? extends R> none);
+    <R> R fold(Function<? super T, ? extends R> some, Supplier<? extends R> none);
 
     /*
      * (non-Javadoc)
@@ -922,18 +928,6 @@ public interface Maybe<T> extends Option<T> {
         return (Maybe<T>) Option.super.peek(c);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see com.oath.cyclops.lambda.monads.Functor#trampoline(java.util.function.
-     * Function)
-     */
-    @Override
-    default <R> Maybe<R> trampoline(final Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-
-        return (Maybe<R>) Option.super.trampoline(mapper);
-    }
-
 
 
 
@@ -978,7 +972,7 @@ public interface Maybe<T> extends Option<T> {
         }
 
         @Override
-        public <R> R visit(final Function<? super T, ? extends R> some, final Supplier<? extends R> none) {
+        public <R> R fold(final Function<? super T, ? extends R> some, final Supplier<? extends R> none) {
             return some.apply(lazy.get());
         }
 
@@ -1047,8 +1041,8 @@ public interface Maybe<T> extends Option<T> {
         }
 
         @Override
-        public <R> Maybe<R> flatMapP(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
-            final Maybe<R> m = Maybe.super.flatMapP(mapper);
+        public <R> Maybe<R> mergeMap(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
+            final Maybe<R> m = Maybe.super.mergeMap(mapper);
             return m;
         }
 
@@ -1096,7 +1090,7 @@ public interface Maybe<T> extends Option<T> {
         public Maybe<T> resolve() {
 
             return lazy.get()
-                    .visit(Maybe::just,Maybe::nothing);
+                    .fold(Maybe::just,Maybe::nothing);
         }
         @Override
         public <R> Maybe<R> flatMap(final Function<? super T, ? extends MonadicValue<? extends R>> mapper) {
@@ -1110,12 +1104,12 @@ public interface Maybe<T> extends Option<T> {
         }
 
         @Override
-        public <R> R visit(final Function<? super T, ? extends R> some, final Supplier<? extends R> none) {
+        public <R> R fold(final Function<? super T, ? extends R> some, final Supplier<? extends R> none) {
             Maybe<T> maybe = lazy.get();
             while (maybe instanceof Lazy) {
                 maybe = ((Lazy<T>) maybe).lazy.get();
             }
-            return maybe.visit(some,none);
+            return maybe.fold(some,none);
         }
         @Override
         public final void subscribe(final Subscriber<? super T> sub) {
@@ -1285,8 +1279,8 @@ public interface Maybe<T> extends Option<T> {
         }
 
         @Override
-        public <R> Maybe<R> flatMapP(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
-            return Maybe.fromLazy(lazy.map(m->m.flatMapP(mapper)));
+        public <R> Maybe<R> mergeMap(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
+            return Maybe.fromLazy(lazy.map(m->m.mergeMap(mapper)));
 
         }
 
@@ -1340,7 +1334,7 @@ public interface Maybe<T> extends Option<T> {
 
 
         @Override
-        public <R> R visit(final Function<? super T, ? extends R> some, final Supplier<? extends R> none) {
+        public <R> R fold(final Function<? super T, ? extends R> some, final Supplier<? extends R> none) {
             return none.get();
         }
 
@@ -1387,7 +1381,7 @@ public interface Maybe<T> extends Option<T> {
         }
 
         @Override
-        public <R> Nothing<R> flatMapP(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
+        public <R> Nothing<R> mergeMap(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
             return (Nothing<R>) EMPTY;
         }
         @Override

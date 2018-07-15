@@ -1,12 +1,14 @@
 package cyclops.control;
 
+import com.oath.cyclops.types.persistent.PersistentSet;
 import com.oath.cyclops.util.box.Mutable;
-import cyclops.reactive.collections.immutable.PersistentSetX;
-import cyclops.reactive.collections.mutable.ListX;
+
+
 import cyclops.companion.Monoids;
 import cyclops.companion.Reducers;
 import cyclops.companion.Semigroups;
 import cyclops.companion.Streams;
+import cyclops.data.HashSet;
 import cyclops.function.Monoid;
 import cyclops.reactive.ReactiveSeq;
 import org.junit.Before;
@@ -60,9 +62,9 @@ public class Ior2Test {
 
 	@Test
     public void visit(){
-        assertThat(just.visit(secondary->"no", primary->"yes",(sec,pri)->"oops!"),equalTo("yes"));
-        assertThat(none.visit(secondary->"no", primary->"yes",(sec,pri)->"oops!"),equalTo("no"));
-        assertThat(Ior.both(10, "eek").visit(secondary->"no", primary->"yes",(sec,pri)->"oops!"),equalTo("oops!"));
+        assertThat(just.fold(secondary->"no", primary->"yes",(sec, pri)->"oops!"),equalTo("yes"));
+        assertThat(none.fold(secondary->"no", primary->"yes",(sec, pri)->"oops!"),equalTo("no"));
+        assertThat(Ior.both(10, "eek").fold(secondary->"no", primary->"yes",(sec, pri)->"oops!"),equalTo("oops!"));
     }
     @Test
     public void visitIor(){
@@ -94,46 +96,46 @@ public class Ior2Test {
 
 	@Test
     public void testSequenceSecondary() {
-    Ior<Integer, ReactiveSeq<String>> iors = Ior.sequenceLeft(ListX.of(just, none, Ior.right(1)));
-        assertThat(iors.map(s->s.toList()),equalTo(Ior.right(ListX.of("none"))));
+    Ior<Integer, ReactiveSeq<String>> iors = Ior.sequenceLeft(Arrays.asList(just, none, Ior.right(1)));
+        assertThat(iors.map(s->s.toList()),equalTo(Ior.right(Arrays.asList("none"))));
     }
 
 	@Test
     public void testAccumulateSecondary() {
-        Ior<?,PersistentSetX<String>> iors = Ior.accumulateLeft(ListX.of(just,none,Ior.right(1)), Reducers.<String>toPersistentSetX());
-        assertThat(iors,equalTo(Ior.right(PersistentSetX.of("none"))));
+        Ior<?,PersistentSet<String>> iors = Ior.accumulateLeft(Arrays.asList(just,none,Ior.right(1)), Reducers.<String>toPersistentSet());
+        assertThat(iors,equalTo(Ior.right(HashSet.of("none"))));
     }
 
 	@Test
     public void testAccumulateSecondarySemigroup() {
-        Ior<?,String> iors = Ior.accumulateLeft(ListX.of(just,none,Ior.left("1")), i->""+i,Monoids.stringConcat);
+        Ior<?,String> iors = Ior.accumulateLeft(Arrays.asList(just,none,Ior.left("1")), i->""+i,Monoids.stringConcat);
         assertThat(iors,equalTo(Ior.right("none1")));
     }
 	@Test
     public void testAccumulateSecondarySemigroupIntSum() {
-        Ior<?,Integer> iors = Ior.accumulateLeft(Monoids.intSum,ListX.of(Ior.both(2, "boo!"),Ior.left(1)));
+        Ior<?,Integer> iors = Ior.accumulateLeft(Monoids.intSum,Arrays.asList(Ior.both(2, "boo!"),Ior.left(1)));
         assertThat(iors,equalTo(Ior.right(3)));
     }
 	@Test
 	public void testSequence() {
-    Ior<String, ReactiveSeq<Integer>> maybes = Ior.sequenceRight(ListX.of(just, none, Ior.right(1)));
-		assertThat(maybes.map(s->s.toList()),equalTo(Ior.right(ListX.of(10,1))));
+    Ior<String, ReactiveSeq<Integer>> maybes = Ior.sequenceRight(Arrays.asList(just, none, Ior.right(1)));
+		assertThat(maybes.map(s->s.toList()),equalTo(Ior.right(Arrays.asList(10,1))));
 	}
 
 	@Test
 	public void testAccumulateJustCollectionXOfMaybeOfTReducerOfR() {
-		Ior<?,PersistentSetX<Integer>> maybes =Ior.accumulateRight(ListX.of(just,none,Ior.right(1)),Reducers.toPersistentSetX());
-		assertThat(maybes,equalTo(Ior.right(PersistentSetX.of(10,1))));
+		Ior<?,PersistentSet<Integer>> maybes =Ior.accumulateRight(Arrays.asList(just,none,Ior.right(1)),Reducers.toPersistentSet());
+		assertThat(maybes,equalTo(Ior.right(HashSet.of(10,1))));
 	}
 
 	@Test
 	public void testAccumulateJustCollectionXOfMaybeOfTFunctionOfQsuperTRSemigroupOfR() {
-		Ior<?,String> maybes = Ior.accumulateRight(ListX.of(just,none,Ior.right(1)), i->""+i,Semigroups.stringConcat);
+		Ior<?,String> maybes = Ior.accumulateRight(Arrays.asList(just,none,Ior.right(1)), i->""+i,Semigroups.stringConcat);
 		assertThat(maybes,equalTo(Ior.right("101")));
 	}
 	@Test
 	public void testAccumulateJust() {
-		Ior<?,Integer> maybes =Ior.accumulateRight(ListX.of(just,none,Ior.right(1)),Semigroups.intSum);
+		Ior<?,Integer> maybes =Ior.accumulateRight(Arrays.asList(just,none,Ior.right(1)),Semigroups.intSum);
 		assertThat(maybes,equalTo(Ior.right(11)));
 	}
 
@@ -165,16 +167,16 @@ public class Ior2Test {
 
 	@Test
 	public void testWhenFunctionOfQsuperTQextendsRSupplierOfQextendsR() {
-		assertThat(just.visit(i->i+1,()->20),equalTo(11));
-		assertThat(none.visit(i->i+1,()->20),equalTo(20));
+		assertThat(just.fold(i->i+1,()->20),equalTo(11));
+		assertThat(none.fold(i->i+1,()->20),equalTo(20));
 	}
 
 
 
 	@Test
 	public void testStream() {
-		assertThat(just.stream().toListX(),equalTo(ListX.of(10)));
-		assertThat(none.stream().toListX(),equalTo(ListX.of()));
+		assertThat(just.stream().toList(),equalTo(Arrays.asList(10)));
+		assertThat(none.stream().toList(),equalTo(Arrays.asList()));
 	}
 
 	@Test
@@ -184,16 +186,16 @@ public class Ior2Test {
 
 	@Test
     public void testConvertTo() {
-        Stream<Integer> toStream = just.visit(m->Stream.of(m),()->Stream.of());
-        assertThat(toStream.collect(Collectors.toList()),equalTo(ListX.of(10)));
+        Stream<Integer> toStream = just.fold(m->Stream.of(m),()->Stream.of());
+        assertThat(toStream.collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
 
     @Test
     public void testConvertToAsync() {
-        Future<Stream<Integer>> async = Future.of(()->just.visit(f->Stream.of((int)f),()->Stream.of()));
+        Future<Stream<Integer>> async = Future.of(()->just.fold(f->Stream.of((int)f),()->Stream.of()));
 
-        assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(ListX.of(10)));
+        assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
 	@Test
@@ -315,8 +317,8 @@ public class Ior2Test {
 
 	@Test
 	public void testWhenFunctionOfQsuperMaybeOfTQextendsR() {
-		assertThat(just.visit(s->"hello", ()->"world"),equalTo("hello"));
-		assertThat(none.visit(s->"hello", ()->"world"),equalTo("world"));
+		assertThat(just.fold(s->"hello", ()->"world"),equalTo("hello"));
+		assertThat(none.fold(s->"hello", ()->"world"),equalTo("world"));
 	}
 
 
@@ -394,11 +396,6 @@ public class Ior2Test {
 	private Trampoline<Integer> sum(int times, int sum){
 		return times ==0 ?  Trampoline.done(sum) : Trampoline.more(()->sum(times-1,sum+times));
 	}
-	@Test
-	public void testTrampoline() {
-		assertThat(just.trampoline(n ->sum(10,n)),equalTo(Ior.right(65)));
-	}
-
 
 
 	@Test

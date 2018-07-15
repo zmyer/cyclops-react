@@ -9,11 +9,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.*;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import com.oath.cyclops.types.stream.HotStream;
 import cyclops.control.Option;
 import cyclops.data.*;
+import cyclops.data.HashMap;
 import cyclops.data.HashSet;
 import cyclops.data.TreeSet;
 import cyclops.data.Vector;
@@ -24,8 +23,8 @@ import cyclops.control.Maybe;
 import cyclops.function.Monoid;
 import cyclops.function.Reducer;
 import cyclops.reactive.ReactiveSeq;
-import cyclops.reactive.collections.mutable.ListX;
-import cyclops.reactive.collections.mutable.MapX;
+import cyclops.data.Seq;
+import cyclops.reactive.Spouts;
 
 /**
  * Represents a type that may be reducable (foldable) to a single value or toX
@@ -46,6 +45,8 @@ public interface Folds<T> extends Iterable<T>  {
     default  Object[] toArray(){
         return stream().toArray();
     }
+
+
 
     default <R> R iterableTo(Function<? super Iterable<? super T>,? extends R> fn){
         return fn.apply(this);
@@ -68,16 +69,17 @@ public interface Folds<T> extends Iterable<T>  {
     default Seq<T> seq(){
         return Seq.fromIterable(this);
     }
-    /**
-     * Collect the collectable into a {@link Map}.
-     */
+
+    default <K, V> HashMap<K, V> toHashMap(Function<? super T, ? extends K> keyMapper, Function<? super T, ? extends V> valueMapper){
+        return HashMap.fromStream(ReactiveSeq.fromIterable(this).map(a->Tuple.tuple(keyMapper.apply(a),valueMapper.apply(a))));
+    }
     default <K, V> Map<K, V> toMap(Function<? super T, ? extends K> keyMapper, Function<? super T, ? extends V> valueMapper){
         return stream().collect(Collectors.toMap(keyMapper,valueMapper));
     }
+    default <K> HashMap<K, T> toHashMap(Function<? super T, ? extends K> keyMapper){
+        return HashMap.fromStream(ReactiveSeq.fromIterable(this).map(a->Tuple.tuple(keyMapper.apply(a),a)));
+    }
 
-    /**
-     * Collect the collectable into a {@link Map} with the given keys and the self element as value.
-     */
     default <K> Map<K, T> toMap(Function<? super T, ? extends K> keyMapper){
         return stream().collect(Collectors.toMap(keyMapper,i->i));
     }
@@ -166,9 +168,9 @@ public interface Folds<T> extends Iterable<T>  {
     }
 
 
-    default ListX<Tuple2<T,BigDecimal>> withPercentiles(){
+    default Seq<Tuple2<T,BigDecimal>> withPercentiles(){
 
-        ListX<T> list = stream().toListX();
+        Seq<T> list = stream().toSeq();
 
         int precision = new Double(Math.log10(list.size())).intValue();
 
@@ -191,7 +193,7 @@ public interface Folds<T> extends Iterable<T>  {
 
 
     default double variance(ToDoubleFunction<T> fn){
-        ListX<T> list = stream().toListX();
+        Seq<T> list = stream().toSeq();
         double avg = list.collect(Collectors.<T>averagingDouble(fn));
         return (list.map(t -> fn.applyAsDouble(t))
                 .map(t -> t - avg)
@@ -200,7 +202,7 @@ public interface Folds<T> extends Iterable<T>  {
 
     }
     default double populationVariance(ToDoubleFunction<T> fn){
-        ListX<T> list = stream().toListX();
+        Seq<T> list = stream().toSeq();
         double avg = list.collect(Collectors.<T>averagingDouble(fn));
         return (list.map(t -> fn.applyAsDouble(t))
                 .map(t -> t - avg)
@@ -210,9 +212,9 @@ public interface Folds<T> extends Iterable<T>  {
     }
 
     default double stdDeviation(ToDoubleFunction<T> fn){
-        ListX<T> list = stream().toListX();
+        Seq<T> list = stream().toSeq();
         double avg = list.collect(Collectors.<T>averagingDouble(fn));
-        return Math.sqrt( list.mapToDouble(fn)
+        return Math.sqrt( list.stream().mapToDouble(fn)
                 .map(i->i-avg)
                 .map(i->i*i)
                 .average()
@@ -229,16 +231,15 @@ public interface Folds<T> extends Iterable<T>  {
         return stream().collect(Collectors.summarizingDouble(fn));
     }
 
-    default Optional<T> max(Comparator<? super T> comparator){
+    default Option<T> maximum(Comparator<? super T> comparator){
         return stream().sorted(comparator.reversed())
-                       .elementAt(0l)
-                       .toOptional();
+                       .elementAt(0l);
     }
-    default Optional<T> min(Comparator<? super T> comparator){
+    default Option<T> minimum(Comparator<? super T> comparator){
         return stream().sorted(comparator)
-                .elementAt(0l)
-                .toOptional();
+                .elementAt(0l);
     }
+
     default int sumInt(ToIntFunction<T> fn){
         return stream().mapToInt(fn).sum();
     }
@@ -305,12 +306,11 @@ public interface Folds<T> extends Iterable<T>  {
     }
 
     /**
-     * Attempt toNePsted transform this Sequence to the same type as the supplied Monoid
-     * (Reducer) Then use Monoid to reduce values
+     * E.g.
      *
      * <pre>
      * {@code
-     * ReactiveSeq.of("hello","2","world","4").mapReduce(Reducers.toCountInt());
+     * ReactiveSeq.of("hello","2","world","4").foldMap(Reducers.toCountInt());
      *
      * //4
      * }
@@ -320,18 +320,17 @@ public interface Folds<T> extends Iterable<T>  {
      *            Monoid to reduce values
      * @return Reduce result
      */
-    default <R> R mapReduce(final Reducer<R,T> reducer) {
-        return stream().mapReduce(reducer);
+    default <R> R foldMap(final Reducer<R,T> reducer) {
+        return stream().foldMap(reducer);
     }
 
     /**
-     * Attempt to transform this Monad to the same type as the supplied Monoid, using
-     * supplied function Then use Monoid to reduce values
+     *
      *
      * <pre>
      *  {@code
      *  ReactiveSeq.of("one","two","three","four")
-     *           .mapReduce(this::toInt,Reducers.toTotalInt());
+     *           .foldMap(this::toInt,Reducers.toTotalInt());
      *
      *  //10
      *
@@ -355,118 +354,29 @@ public interface Folds<T> extends Iterable<T>  {
      *            Monoid to reduce values
      * @return Reduce result
      */
-    default <R> R mapReduce(final Function<? super T, ? extends R> mapper, final Monoid<R> reducer) {
-        return stream().mapReduce(mapper, reducer);
+    default <R> R foldMap(final Function<? super T, ? extends R> mapper, final Monoid<R> reducer) {
+        return stream().foldMap(mapper, reducer);
     }
 
-    /**
-     * Reduce this Folds to a single value, using the supplied Monoid. For example
-     * <pre>
-     * {@code
-     * ReactiveSeq.of("hello","2","world","4").reduce(Reducers.toString(","));
-     *
-     * //hello,2,world,4
-     * }
-     * </pre>
-     *
-     * @param reducer
-     *            Use supplied Monoid to reduce values
-     * @return reduced values
-     */
-    default T reduce(final Monoid<T> reducer) {
-        return reduce(reducer.zero(),reducer);
-    }
 
-    /**
-     * An equivalent function to {@link java.util.stream.Stream#reduce(BinaryOperator)}
-     *
-     *  <pre> {@code
-     *
-     *       ReactiveSeq.of(1,2,3,4,5).map(it -> it*100).reduce(
-     * (acc,next) -> acc+next)
-     *        //Optional[1500]
-     *  }
-     *  </pre>
-     * @param accumulator Combiner function
-     * @return
-     */
-    default Optional<T> reduce(final BinaryOperator<T> accumulator) {
-        return stream().reduce(accumulator);
-    }
 
     default Option<T> foldLeft(final BinaryOperator<T> accumulator) {
         return Option.fromOptional(stream().reduce(accumulator));
     }
 
-    /**
-     *  An equivalent function to {@link java.util.stream.Stream#reduce(Object, BinaryOperator)}
-     * @param accumulator Combiner function
-     * @return Value emitted by applying the current accumulated value and the
-     *          next value to the combiner function as this Folds is traversed from left to right
-     */
-    default T reduce(final T identity, final BinaryOperator<T> accumulator) {
-        return stream().reduce(identity, accumulator);
-    }
 
-    /**
-     * An equivalent function to {@link java.util.stream.Stream#reduce(Object, BinaryOperator)}
-     *
-     * @param identity Identity value for the combiner function (leaves the input unchanged)
-     * @param accumulator Combiner function
-     * @return Value emitted by applying the current accumulated value and the
-     *          next value to the combiner function as this Folds is traversed from left to right
-     */
-    default <U> U reduce(final U identity, final BiFunction<U, ? super T, U> accumulator) {
-        final Folds<T> foldable = stream();
-        return foldable.reduce(identity, accumulator);
-    }
     default <U> U foldLeft(final U identity, final BiFunction<U, ? super T, U> accumulator) {
-       return reduce(identity,accumulator);
+       return stream().reduce(identity,accumulator);
     }
     default <U> U foldLeft(final U identity, final BiFunction<U, ? super T, U> accumulator, final BinaryOperator<U> combiner) {
-        return reduce(identity,accumulator,combiner);
+        return stream().reduce(identity,accumulator,combiner);
     }
     default T foldLeft(final T identity, final BinaryOperator<T> accumulator) {
-        return reduce(identity, accumulator);
+        return stream().reduce(identity, accumulator);
     }
     default T foldLeft(final Monoid<T> reducer) {
-        return reduce(reducer);
+        return stream().reduce(reducer);
     }
-    /**
-     * An equivalent function to {@link java.util.stream.Stream#reduce(Object, BiFunction, BinaryOperator)}
-     *
-     */
-    default <U> U reduce(final U identity, final BiFunction<U, ? super T, U> accumulator, final BinaryOperator<U> combiner) {
-        return stream().reduce(identity, accumulator, combiner);
-    }
-
-    /**
-     * Reduce with multiple reducers in parallel NB if this Monad is an Optional
-     * [Arrays.asList(1,2,3)] reduce will operate on the Optional as if the list
-     * was one value To reduce over the values on the list, called
-     * streamedMonad() first. I.e. streamedMonad().reduce(reducer)
-     *
-     * <pre>
-     * {@code
-     * 	Monoid<Integer> sum = Monoid.of(0, (a, b) -&gt; a + b);
-     * 	Monoid<Integer> mult = Monoid.of(1, (a, b) -&gt; a * b);
-     * 	List<Integer> result = ReactiveSeq.of(1, 2, 3, 4)
-     *                                    .reduce(Arrays.asList(sum, mult)
-     *                                    .stream());
-     *
-     * 	assertThat(result, equalTo(Arrays.asList(10, 24)));
-     *
-     * }
-     * </pre>
-     *
-     *
-     * @param reducers
-     * @return List of reduced values
-     */
-    default ListX<T> reduce(final Stream<? extends Monoid<T>> reducers) {
-        return stream().reduce(reducers);
-    }
-
     /**
      * Reduce with multiple reducers in parallel NB if this Monad is an Optional
      * [Arrays.asList(1,2,3)] reduce will operate on the Optional as if the list
@@ -489,9 +399,11 @@ public interface Folds<T> extends Iterable<T>  {
      * @param reducers
      * @return
      */
-    default ListX<T> reduce(final Iterable<? extends Monoid<T>> reducers) {
+    default Seq<T> foldLeft(final Iterable<? extends Monoid<T>> reducers) {
         return stream().reduce(reducers);
     }
+
+
 
     /**
      *
@@ -546,7 +458,7 @@ public interface Folds<T> extends Iterable<T>  {
      *
      * <pre>
      * 		{@code
-     * 		ReactiveSeq.of(1,2,3).foldRightMapToType(Reducers.toString(""));
+     * 		ReactiveSeq.of(1,2,3).foldMapRight(Reducers.toString(""));
      *
      *         // "321"
      *         }
@@ -557,8 +469,8 @@ public interface Folds<T> extends Iterable<T>  {
      *            Monoid to reduce values
      * @return Reduce result
      */
-    default <R> R foldRightMapToType(final Reducer<R,T> reducer) {
-        return stream().foldRightMapToType(reducer);
+    default <R> R foldMapRight(final Reducer<R,T> reducer) {
+        return stream().foldMapRight(reducer);
     }
 
     /**
@@ -648,45 +560,16 @@ public interface Folds<T> extends Iterable<T>  {
      *
      * </pre>
      */
-    default <K> MapX<K, ListX<T>> groupBy(final Function<? super T, ? extends K> classifier) {
+    default <K> HashMap<K, Vector<T>> groupBy(final Function<? super T, ? extends K> classifier) {
         return stream().groupBy(classifier);
     }
 
-    /**
-     * @return First matching element in sequential order
-     *
-     * <pre>
-     * {@code
-     * ReactiveSeq.of(1,2,3,4,5).filter(it -> it <3).findFirst().getValue();
-     *
-     * //3
-     * }
-     * </pre>
-     *
-     *         (deterministic)
-     *
-     */
-    default Optional<T> findFirst() {
-        return stream().findFirst();
+
+    default Option<T> headOption(){
+        return stream().headOption();
     }
 
-    /**
-     * @return first matching element, but order is not guaranteed
-     *
-     *         <pre>
-     * {@code
-     * ReactiveSeq.of(1,2,3,4,5).filter(it -> it <3).findAny().getValue();
-     *
-     * //3
-     * }
-     * </pre>
-     *
-     *
-     *         (non-deterministic)
-     */
-    default Optional<T> findAny() {
-        return stream().findAny();
-    }
+
 
     /**
      *
@@ -699,21 +582,11 @@ public interface Folds<T> extends Iterable<T>  {
      * @param iterable
      * @return True if Monad starts with Iterable sequence of data
      */
-    default boolean startsWithIterable(final Iterable<T> iterable) {
-        return stream().startsWithIterable(iterable);
+    default boolean startsWith(final Iterable<T> iterable) {
+        return stream().startsWith(iterable);
     }
 
-    /**
-     * <pre>
-     * {@code assertTrue(ReactiveSeq.of(1,2,3,4).startsWith(Stream.of(1,2,3))) }
-     * </pre>
-     *
-     * @param stream Stream to check if this Folds has the same elements in the same order, at the skip
-     * @return True if Monad starts with Iterators sequence of data
-     */
-    default boolean startsWith(final Stream<T> stream) {
-        return stream().startsWith(stream);
-    }
+
 
     /**
      * <pre>
@@ -727,25 +600,10 @@ public interface Folds<T> extends Iterable<T>  {
      * @param iterable Values to check
      * @return true if SequenceM ends with values in the supplied iterable
      */
-    default boolean endsWithIterable(final Iterable<T> iterable) {
-        return stream().endsWithIterable(iterable);
+    default boolean endsWith(final Iterable<T> iterable) {
+        return stream().endsWith(iterable);
     }
 
-    /**
-     * <pre>
-     * {@code
-     * assertTrue(ReactiveSeq.of(1,2,3,4,5,6)
-     *              .endsWith(Stream.of(5,6)));
-     * }
-     * </pre>
-     *
-     * @param stream
-     *            Values to check
-     * @return true if SequenceM endswith values in the supplied Stream
-     */
-    default boolean endsWith(final Stream<T> stream) {
-        return stream().endsWith(stream);
-    }
 
 
 
@@ -772,10 +630,10 @@ public interface Folds<T> extends Iterable<T>  {
      * {@code
      *
      *    //1
-     *    ReactiveSeq.of(1).single();
+     *    ReactiveSeq.of(1).singleOrElse(-1);
      *
-     *    //UnsupportedOperationException
-     *    ReactiveSeq.of().single();
+     *    //-1
+     *    ReactiveSeq.of().singleOrElse(-1);
      *
      *     //UnsupportedOperationException
      *    ReactiveSeq.of(1,2,3).single();
@@ -810,7 +668,7 @@ public interface Folds<T> extends Iterable<T>  {
      * }
      * </pre>
      *
-     * @return An Optional with single value if this Stream has exactly one
+     * @return A Maybe with single value if this Stream has exactly one
      *         element, otherwise Optional Empty
      */
     default Maybe<T> single() {
@@ -837,41 +695,7 @@ public interface Folds<T> extends Iterable<T>  {
         return stream().elementAt(index);
     }
 
-    /**
-     * Execute this Stream on a schedule
-     *
-     * <pre>
-     * {@code
-     *  //run at 8PM every night
-     *  ReactiveSeq.generate(()->"next job:"+formatDate(new Date()))
-     *             .map(this::processJob)
-     *             .schedule("0 20 * * *",Executors.newScheduledThreadPool(1));
-     * }
-     * </pre>
-     *
-     * Connect to the Scheduled Stream
-     *
-     * <pre>
-     * {@code
-     *
-     *  HotStream<Data> dataStream = ReactiveSeq.generate(() -> "next job:" + formatDate(new Date())).map(this::processJob)
-     *          .schedule("0 20 * * *", Executors.newScheduledThreadPool(1));
-     *
-     *  data.connect().forEach(this::logToDB);
-     * }
-     * </pre>
-     *
-     *
-     *
-     * @param cron
-     *            Expression that determines when each job will run
-     * @param ex
-     *            ScheduledExecutorService
-     * @return Connectable HotStream of emitted from scheduled Stream
-     */
-    default HotStream<T> schedule(final String cron, final ScheduledExecutorService ex) {
-        return stream().schedule(cron, ex);
-    }
+
 
     default Maybe<Long> indexOf(Predicate<? super T> pred){
       return stream().zipWithIndex()
@@ -886,73 +710,22 @@ public interface Folds<T> extends Iterable<T>  {
                      .takeOne()
                      .map(v->v._2());
     }
-    /**
-     * Execute this Stream on a schedule
-     *
-     * <pre>
-     * {@code
-     *  //run every 60 seconds after last job completes
-     *  ReactiveSeq.generate(()->"next job:"+formatDate(new Date()))
-     *             .map(this::processJob)
-     *             .scheduleFixedDelay(60_000,Executors.newScheduledThreadPool(1));
-     * }
-     * </pre>
-     *
-     * Connect to the Scheduled Stream
-     *
-     * <pre>
-     * {@code
-     *  HotStream<Data> dataStream = ReactiveSeq.generate(() -> "next job:" + formatDate(new Date())).map(this::processJob)
-     *                                          .scheduleFixedDelay(60_000, Executors.newScheduledThreadPool(1));
-     *
-     *  data.connect().forEach(this::logToDB);
-     * }
-     * </pre>
-     *
-     *
-     * @param delay
-     *            Between last element completes passing through the Stream
-     *            until the next one starts
-     * @param ex
-     *            ScheduledExecutorService
-     * @return Connectable HotStream of emitted from scheduled Stream
-     */
-    default HotStream<T> scheduleFixedDelay(final long delay, final ScheduledExecutorService ex) {
-        return stream().scheduleFixedDelay(delay, ex);
+    default Maybe<Long> indexOfSlice(Iterable<? extends T> slice){
+        LazySeq<? extends T> ls = LazySeq.fromIterable(slice);
+        Predicate<? super Seq<? super T>> pred = in -> in.equals(ls);
+        return stream().sliding(ls.size(),1).indexOf(pred);
+    }
+    default Maybe<Long> lastIndexOfSlice(Iterable<? extends T> slice){
+        LazySeq<? extends T> ls = LazySeq.fromIterable(slice);
+        Predicate<? super Seq<? super T>> pred = in -> in.equals(ls);
+        return stream().sliding(ls.size(),1).lastIndexOf(pred);
     }
 
-    /**
-     * Execute this Stream on a schedule
-     *
-     * <pre>
-     * {@code
-     *  //run every 60 seconds
-     *  SequenceeM.generate(()->"next job:"+formatDate(new Date()))
-     *            .map(this::processJob)
-     *            .scheduleFixedRate(60_000,Executors.newScheduledThreadPool(1));
-     * }
-     * </pre>
-     *
-     * Connect to the Scheduled Stream
-     *
-     * <pre>
-     * {@code
-     *
-     *  HotStream<Data> dataStream = ReactiveSeq.generate(() -&gt; "next job:" + formatDate(new Date())).map(this::processJob)
-     *                                          .scheduleFixedRate(60_000, Executors.newScheduledThreadPool(1));
-     *
-     *  data.connect().forEach(this::logToDB);
-     * }
-     * </pre>
-     *
-     * @param rate
-     *            Time in millis between job runs
-     * @param ex
-     *            ScheduledExecutorService
-     * @return Connectable HotStream of emitted from scheduled Stream
-     */
-    default HotStream<T> scheduleFixedRate(final long rate, final ScheduledExecutorService ex) {
-        return stream().scheduleFixedRate(rate, ex);
+
+
+
+    default ReactiveSeq<T> scheduleStream(final String cron, final ScheduledExecutorService ex) {
+        return Spouts.schedule(stream(),cron,ex);
     }
 
 

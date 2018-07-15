@@ -3,7 +3,7 @@ package cyclops.control;
 import cyclops.function.Monoid;
 import cyclops.companion.Semigroups;
 import com.oath.cyclops.util.box.Mutable;
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.companion.Streams;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,10 +37,8 @@ public class TryTest {
 
 	@Test
     public void recover(){
-
         final String result = Try.withCatch(() -> "takeOne", RuntimeException.class)
-                .recoverFlatMap(__ -> Try.<String,RuntimeException>success("ignored")
-                        .retry(i->"retry"))
+                                .recoverFlatMap(__ -> Try.<String,RuntimeException>success("ignored"))
                 .orElse("boo!");
         Try.withCatch(() -> "hello", RuntimeException.class)
            .recover(()->"world");
@@ -50,12 +48,7 @@ public class TryTest {
 
 
 
-	@Test
-    public void nest(){
-       assertThat(just.nest().map(m->m.toOptional().get()),equalTo(just));
-       assertThat(none.nest().map(m->m.get()),equalTo(none));
-    }
-    @Test
+   @Test
     public void coFlatMap(){
         assertThat(just.coflatMap(m-> m.isPresent()? m.toOptional().get() : 50),equalTo(just));
         assertThat(none.coflatMap(m-> m.isPresent()? m.toOptional().get() : 50),equalTo(Try.success(50)));
@@ -112,16 +105,16 @@ public class TryTest {
 
 	@Test
 	public void testWhenFunctionOfQsuperTQextendsRSupplierOfQextendsR() {
-		assertThat(just.visit(i->i+1,()->20),equalTo(11));
-		assertThat(none.visit(i->i+1,()->20),equalTo(20));
+		assertThat(just.fold(i->i+1,()->20),equalTo(11));
+		assertThat(none.fold(i->i+1,()->20),equalTo(20));
 	}
 
 
 
 	@Test
 	public void testStream() {
-		assertThat(just.stream().toListX(),equalTo(ListX.of(10)));
-		assertThat(none.stream().toListX(),equalTo(ListX.of()));
+		assertThat(just.stream().toList(),equalTo(Arrays.asList(10)));
+		assertThat(none.stream().toList(),equalTo(Arrays.asList()));
 	}
 
 	@Test
@@ -131,15 +124,15 @@ public class TryTest {
 
 	@Test
     public void testConvertTo() {
-        Stream<Integer> toStream = just.visit(m->Stream.of(m),()->Stream.of());
-        assertThat(toStream.collect(Collectors.toList()),equalTo(ListX.of(10)));
+        Stream<Integer> toStream = just.fold(m->Stream.of(m),()->Stream.of());
+        assertThat(toStream.collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
     @Test
     public void testConvertToAsync() {
-        Future<Stream<Integer>> async = Future.of(()->just.visit(f->Stream.of((int)f),()->Stream.of()));
+        Future<Stream<Integer>> async = Future.of(()->just.fold(f->Stream.of((int)f),()->Stream.of()));
 
-        assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(ListX.of(10)));
+        assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
 
@@ -302,8 +295,8 @@ public class TryTest {
 
 	@Test
 	public void testWhenFunctionOfQsuperMaybeOfTQextendsR() {
-		assertThat(just.visit(s->"hello", ()->"world"),equalTo("hello"));
-		assertThat(none.visit(s->"hello", ()->"world"),equalTo("world"));
+		assertThat(just.fold(s->"hello", ()->"world"),equalTo("hello"));
+		assertThat(none.fold(s->"hello", ()->"world"),equalTo("world"));
 	}
 
 
@@ -377,12 +370,6 @@ public class TryTest {
 	private Trampoline<Integer> sum(int times, int sum){
 		return times ==0 ?  Trampoline.done(sum) : Trampoline.more(()->sum(times-1,sum+times));
 	}
-	@Test
-	public void testTrampoline() {
-		assertThat(just.trampoline(n ->sum(10,n)).toEither(),equalTo(Either.right(65)));
-	}
-
-
 
 	@Test
 	public void testUnitT1() {

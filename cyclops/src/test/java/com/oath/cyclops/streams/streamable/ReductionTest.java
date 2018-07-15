@@ -7,7 +7,7 @@ import static org.junit.Assert.assertThat;
 import org.junit.Test;
 
 import cyclops.companion.Reducers;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 
 
 public class ReductionTest {
@@ -15,12 +15,12 @@ public class ReductionTest {
 	@Test
 	public void reduceWithMonoid(){
 
-		assertThat(Streamable.of("hello","2","world","4").mapReduce(Reducers.toCountInt()),equalTo(4));
+		assertThat(Streamable.of("hello","2","world","4").foldMap(Reducers.toCountInt()),equalTo(4));
 	}
 	@Test
 	public void reduceWithMonoid2(){
 
-		assertThat(Streamable.of("replaceWith","two","three","four").mapReduce(this::toInt,Reducers.toTotalInt()),
+		assertThat(Streamable.of("replaceWith","two","three","four").foldMap(this::toInt,Reducers.toTotalInt()),
 						equalTo(10));
 	}
 

@@ -1,9 +1,12 @@
 package cyclops.typeclasses.foldable;
 
-import cyclops.reactive.collections.mutable.ListX;
+import cyclops.control.Option;
+import cyclops.data.LazySeq;
+import cyclops.data.Seq;
 import cyclops.companion.Monoids;
 import cyclops.function.Monoid;
 import com.oath.cyclops.hkt.Higher;
+import cyclops.function.Ordering;
 import cyclops.reactive.ReactiveSeq;
 import cyclops.arrow.MonoidK;
 
@@ -72,23 +75,27 @@ public interface Foldable<CRE> {
     default <C2,T,R> Higher<C2,T> foldK(MonoidK<C2> monoid, Higher<CRE,Higher<C2,T>> ds) {
         return foldLeft(monoid.asMonoid(), ds);
     }
+    
 
     default <T> long size(Higher<CRE, T> ds) {
         return foldMap(Monoids.longSum, __ -> 1l, ds);
     }
-    default  <T> ListX<T> listX(Higher<CRE, T> ds){
-        return ListX.defer(()->foldMap(Monoids.listXConcat(), t->ListX.of(t),ds));
+    default  <T> Seq<T> seq(Higher<CRE, T> ds){
+        return foldMap(Monoids.seqConcat(), t->Seq.of(t),ds);
+    }
+    default  <T> LazySeq<T> lazySeq(Higher<CRE, T> ds){
+        return foldMap(Monoids.lazySeqConcat(), t->LazySeq.of(t),ds);
     }
     default  <T> ReactiveSeq<T> stream(Higher<CRE, T> ds){
-        return listX(ds).stream();
+        return seq(ds).stream();
     }
 
     default <T> T intercalate(Monoid<T> monoid, T value, Higher<CRE, T> ds ){
-        return listX(ds).intersperse(value).foldLeft(monoid);
+        return seq(ds).intersperse(value).foldLeft(monoid);
     }
 
-    default <T> T getAt(Higher<CRE, T> ds,int index){
-        return listX(ds).get(index);
+    default <T> Option<T> getAt(Higher<CRE, T> ds, int index){
+        return seq(ds).get(index);
     }
 
     default<T> boolean anyMatch(Predicate<? super T> pred, Higher<CRE, T> ds){

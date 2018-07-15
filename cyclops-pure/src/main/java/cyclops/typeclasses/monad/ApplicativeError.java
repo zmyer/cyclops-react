@@ -2,8 +2,8 @@ package cyclops.typeclasses.monad;
 
 
 import com.oath.cyclops.hkt.Higher;
-import cyclops.control.Eval;
 import cyclops.control.Either;
+import cyclops.control.Eval;
 import cyclops.control.LazyEither;
 import cyclops.function.Function0;
 
@@ -27,7 +27,7 @@ public interface ApplicativeError<W,E> extends Applicative<W>{
         }
     }
     default <T,X extends Throwable> Higher<W,T> fromEither(Either<E,T> t){
-        return t.visit(this::raiseError,a->unit(a));
+        return t.fold(this::raiseError, a->unit(a));
     }
      default <T> Higher<W, LazyEither<E, T>> recover(Higher<W, T> ds){
         return handleErrorWith(l->unit(LazyEither.left(l)),map(r-> LazyEither.right(r),ds));

@@ -8,14 +8,14 @@ import java.util.SortedSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
-import com.oath.anym.internal.adapters.*;
+import com.oath.cyclops.anym.internal.adapters.*;
 import com.oath.cyclops.types.traversable.IterableX;
 import cyclops.control.*;
 import cyclops.control.Future;
 import cyclops.data.*;
 import cyclops.futurestream.FutureStream;
 import cyclops.reactive.ReactiveSeq;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 import cyclops.reactive.collections.immutable.*;
 import cyclops.reactive.collections.mutable.DequeX;
 import cyclops.reactive.collections.mutable.ListX;
@@ -23,7 +23,7 @@ import cyclops.reactive.collections.mutable.QueueX;
 import cyclops.reactive.collections.mutable.SetX;
 import cyclops.reactive.collections.mutable.SortedSetX;
 import com.oath.cyclops.types.MonadicValue;
-import com.oath.anym.extensability.MonadAdapter;
+import com.oath.cyclops.anym.extensability.MonadAdapter;
 
 public interface Witness {
    static interface MonadicValueWitness<W extends MonadicValueWitness<W>>  extends WitnessType<W>{
@@ -75,7 +75,7 @@ public interface Witness {
     public static <T> VectorX<T> vectorX(AnyM<vectorX,? extends T> anyM){
         return anyM.unwrap();
     }
-    public static <T> PersistentQueueX<T> persistentQueueX(AnyM<persistentSetX,? extends T> anyM){
+    public static <T> PersistentQueueX<T> persistentQueueX(AnyM<persistentQueueX,? extends T> anyM){
         return anyM.unwrap();
     }
     public static <T> PersistentSetX<T> persistentSetX(AnyM<persistentSetX,? extends T> anyM){
@@ -175,7 +175,7 @@ public interface Witness {
     }
     public static enum reactiveSeq implements StreamWitness<reactiveSeq>{
 
-        REACTIVE,CO_REACTIVE;
+        REACTIVE, ITERATIVE;
 
         @Override
         public MonadAdapter<reactiveSeq> adapter() {
@@ -194,7 +194,7 @@ public interface Witness {
         @Override
         public MonadAdapter<sortedSet> adapter() {
             return new IterableXAdapter<sortedSet>(SortedSetX::empty,
-                    SortedSetX::of,SortedSetX::fromIterator,this);
+                    s->SortedSetX.of(s),SortedSetX::fromIterable,this);
         }
 
     }
@@ -204,7 +204,7 @@ public interface Witness {
         @Override
         public MonadAdapter<set> adapter() {
             return new IterableXAdapter<set>(SetX::empty,
-                    SetX::of,SetX::fromIterator,this);
+                    s->SetX.of(s),SetX::fromIterable,this);
         }
 
     }
@@ -214,7 +214,7 @@ public interface Witness {
         @Override
         public MonadAdapter<list> adapter() {
             return new IterableXAdapter<list>(ListX::empty,
-                    ListX::of,ListX::fromIterator,this);
+                    l->ListX.of(l),ListX::fromIterable,this);
         }
 
     }
@@ -224,7 +224,7 @@ public interface Witness {
         @Override
         public MonadAdapter<linkedListX> adapter() {
             return new IterableXAdapter<linkedListX>(LinkedListX::empty,
-                    LinkedListX::of, LinkedListX::fromIterator,this);
+                    LinkedListX::of, LinkedListX::fromIterable,this);
         }
 
     }
@@ -234,7 +234,7 @@ public interface Witness {
         @Override
         public MonadAdapter<vectorX> adapter() {
             return new IterableXAdapter<vectorX>(VectorX::empty,
-                    VectorX::of, VectorX::fromIterator,this);
+                    VectorX::of, VectorX::fromIterable,this);
         }
 
     }
@@ -244,7 +244,7 @@ public interface Witness {
         @Override
         public MonadAdapter<persistentQueueX> adapter() {
             return new IterableXAdapter<persistentQueueX>(PersistentQueueX::empty,
-                    PersistentQueueX::of, PersistentQueueX::fromIterator,this);
+                    PersistentQueueX::of, PersistentQueueX::fromIterable,this);
         }
 
     }
@@ -254,7 +254,7 @@ public interface Witness {
         @Override
         public MonadAdapter<persistentSetX> adapter() {
             return new IterableXAdapter<persistentSetX>(PersistentSetX::empty,
-                    PersistentSetX::of, PersistentSetX::fromIterator,this);
+                    PersistentSetX::of, PersistentSetX::fromIterable,this);
         }
 
     }
@@ -264,7 +264,7 @@ public interface Witness {
         @Override
         public MonadAdapter<orderedSetX> adapter() {
             return new IterableXAdapter<orderedSetX>(OrderedSetX::empty,
-                    OrderedSetX::identityOrNatural, OrderedSetX::fromIterator,this);
+                    OrderedSetX::identityOrNatural, OrderedSetX::fromIterable,this);
         }
 
     }
@@ -274,7 +274,7 @@ public interface Witness {
         @Override
         public MonadAdapter<bagX> adapter() {
             return new IterableXAdapter<bagX>(BagX::empty,
-                    BagX::of, BagX::fromIterator,this);
+                    BagX::of, BagX::fromIterable,this);
         }
 
     }
@@ -284,7 +284,7 @@ public interface Witness {
         @Override
         public MonadAdapter<deque> adapter() {
             return new IterableXAdapter<deque>(DequeX::empty,
-                    DequeX::of,DequeX::fromIterator,this);
+                    DequeX::of,DequeX::fromIterable,this);
         }
 
     }
@@ -294,7 +294,7 @@ public interface Witness {
         @Override
         public MonadAdapter<queue> adapter() {
             return new IterableXAdapter<queue>(QueueX::empty,
-                    QueueX::of,QueueX::fromIterator,this);
+                    QueueX::of,QueueX::fromIterable,this);
         }
 
     }
@@ -305,7 +305,7 @@ public interface Witness {
       @Override
       public MonadAdapter<seq> adapter() {
         return new IterableXAdapter<seq>(Seq::empty,
-          Seq::of,Seq::fromIterator,this);
+          Seq::of,Seq::fromIterable,this);
       }
 
     }
@@ -315,7 +315,7 @@ public interface Witness {
       @Override
       public MonadAdapter<lazySeq> adapter() {
         return new IterableXAdapter<lazySeq>(LazySeq::empty,
-          LazySeq::of, LazySeq::fromIterator,this);
+          LazySeq::of, LazySeq::fromIterable,this);
       }
 
     }
@@ -325,7 +325,7 @@ public interface Witness {
       @Override
       public MonadAdapter<vector> adapter() {
         return new IterableXAdapter<vector>(Vector::empty,
-          Vector::of, Vector::fromIterator,this);
+          Vector::of, Vector::fromIterable,this);
       }
 
     }
@@ -335,7 +335,7 @@ public interface Witness {
       @Override
       public MonadAdapter<hashSet> adapter() {
         return new IterableXAdapter<hashSet>(HashSet::empty,
-          HashSet::of, HashSet::fromIterator,this);
+          HashSet::of, HashSet::fromIterable,this);
       }
 
     }
@@ -345,7 +345,7 @@ public interface Witness {
       @Override
       public MonadAdapter<bankersQueue> adapter() {
         return new IterableXAdapter<bankersQueue>(BankersQueue::empty,
-          BankersQueue::of, BankersQueue::fromIterator,this);
+          BankersQueue::of, BankersQueue::fromIterable,this);
       }
 
     }

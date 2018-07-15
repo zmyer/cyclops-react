@@ -1,19 +1,16 @@
 package cyclops.data;
 
+import com.oath.cyclops.types.foldable.Contains;
+import com.oath.cyclops.types.persistent.PersistentCollection;
 import com.oath.cyclops.types.persistent.PersistentQueue;
 import com.oath.cyclops.matching.Deconstruct.Deconstruct2;
 import com.oath.cyclops.matching.Sealed2;
-import com.oath.cyclops.types.foldable.Evaluation;
 import com.oath.cyclops.types.foldable.To;
 import com.oath.cyclops.types.recoverable.OnEmptyError;
 import com.oath.cyclops.types.recoverable.OnEmptySwitch;
 import com.oath.cyclops.types.traversable.IterableX;
 import com.oath.cyclops.types.traversable.Traversable;
-import cyclops.reactive.collections.immutable.LinkedListX;
-import cyclops.reactive.collections.immutable.VectorX;
-import cyclops.reactive.collections.mutable.ListX;
 import cyclops.control.Option;
-import cyclops.control.Trampoline;
 import cyclops.control.Try;
 import cyclops.function.Function3;
 import cyclops.function.Function4;
@@ -27,7 +24,6 @@ import cyclops.data.tuple.Tuple4;
 import org.reactivestreams.Publisher;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.Stream;
 
@@ -35,13 +31,14 @@ import java.util.stream.Stream;
 public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,ImmutableQueue.None<T>>,
                                             OnEmptySwitch<ImmutableQueue<T>, ImmutableQueue<T>>,
                                             OnEmptyError<T, ImmutableQueue<T>>,
+                                            Contains<T>,
                                             IterableX<T>, To<ImmutableQueue<T>>, PersistentQueue<T> {
 
 
 
     @Override
     default ImmutableQueue<T> plus(T e){
-        return appendAll(e);
+        return append(e);
     }
 
     @Override
@@ -107,9 +104,7 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
         return res[0].foldLeft(ar, (a,b)->a.prepend(b));
 
     }
-    default LinkedListX<T> linkdedListX(){
-        return stream().to().linkedListX(Evaluation.LAZY);
-    }
+
 
     default ImmutableQueue<T> subList(int start, int end){
         return drop(start).take(end-start);
@@ -151,7 +146,7 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
     ImmutableQueue<T> prepend(T value);
     ImmutableQueue<T> prependAll(Iterable<? extends T> value);
 
-    ImmutableQueue<T> appendAll(T value);
+    ImmutableQueue<T> append(T value);
     ImmutableQueue<T> appendAll(Iterable<? extends T> value);
 
     ImmutableQueue<T> reverse();
@@ -196,20 +191,7 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
         return (ImmutableQueue<T>)IterableX.super.peek(c);
     }
 
-    @Override
-    default <R> ImmutableQueue<R> trampoline(Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-        return (ImmutableQueue<R>)IterableX.super.trampoline(mapper);
-    }
 
-    @Override
-    default <R> ImmutableQueue<R> retry(Function<? super T, ? extends R> fn) {
-        return (ImmutableQueue<R>)IterableX.super.retry(fn);
-    }
-
-    @Override
-    default <R> ImmutableQueue<R> retry(Function<? super T, ? extends R> fn, int retries, long delay, TimeUnit timeUnit) {
-        return (ImmutableQueue<R>)IterableX.super.retry(fn,retries,delay,timeUnit);
-    }
 
     <R> ImmutableQueue<R> flatMap(Function<? super T, ? extends ImmutableQueue<? extends R>> fn);
     <R> ImmutableQueue<R> concatMap(Function<? super T, ? extends Iterable<? extends R>> fn);
@@ -451,11 +433,6 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
         return unitStream(stream().zip4(second,third,fourth,fn));
     }
 
-    @Override
-    default <U> ImmutableQueue<U> unitIterator(Iterator<U> it){
-        return unitStream(ReactiveSeq.fromIterator(it));
-    }
-
 
     @Override
     default ImmutableQueue<T> combine(BiPredicate<? super T, ? super T> predicate, BinaryOperator<T> op) {
@@ -508,28 +485,29 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
     }
 
     @Override
-    default ImmutableQueue<VectorX<T>> sliding(int windowSize) {
+    default ImmutableQueue<Seq<T>> sliding(int windowSize) {
         return unitStream(stream().sliding(windowSize));
     }
 
     @Override
-    default ImmutableQueue<VectorX<T>> sliding(int windowSize, int increment) {
+    default ImmutableQueue<Seq<T>> sliding(int windowSize, int increment) {
         return unitStream(stream().sliding(windowSize,increment));
     }
 
     @Override
-    default <C extends Collection<? super T>> ImmutableQueue<C> grouped(int size, Supplier<C> supplier) {
+    default <C extends PersistentCollection<? super T>> ImmutableQueue<C> grouped(int size, Supplier<C> supplier) {
         return unitStream(stream().grouped(size,supplier));
     }
 
+
     @Override
-    default ImmutableQueue<ListX<T>> groupedUntil(Predicate<? super T> predicate) {
+    default ImmutableQueue<Vector<T>> groupedUntil(Predicate<? super T> predicate) {
         return unitStream(stream().groupedUntil(predicate));
     }
 
     @Override
-    default ImmutableQueue<ListX<T>> groupedStatefullyUntil(BiPredicate<ListX<? super T>, ? super T> predicate) {
-        return unitStream(stream().groupedStatefullyUntil(predicate));
+    default ImmutableQueue<Vector<T>> groupedUntil(BiPredicate<Vector<? super T>, ? super T> predicate) {
+        return unitStream(stream().groupedUntil(predicate));
     }
 
     default <U> ImmutableQueue<Tuple2<T, U>> zipWithStream(Stream<? extends U> other) {
@@ -537,22 +515,22 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
     }
 
     @Override
-    default ImmutableQueue<ListX<T>> groupedWhile(Predicate<? super T> predicate) {
+    default ImmutableQueue<Vector<T>> groupedWhile(Predicate<? super T> predicate) {
         return unitStream(stream().groupedWhile(predicate));
     }
 
     @Override
-    default <C extends Collection<? super T>> ImmutableQueue<C> groupedWhile(Predicate<? super T> predicate, Supplier<C> factory) {
+    default <C extends PersistentCollection<? super T>> ImmutableQueue<C> groupedWhile(Predicate<? super T> predicate, Supplier<C> factory) {
         return unitStream(stream().groupedWhile(predicate,factory));
     }
 
     @Override
-    default <C extends Collection<? super T>> ImmutableQueue<C> groupedUntil(Predicate<? super T> predicate, Supplier<C> factory) {
+    default <C extends PersistentCollection<? super T>> ImmutableQueue<C> groupedUntil(Predicate<? super T> predicate, Supplier<C> factory) {
         return unitStream(stream().groupedUntil(predicate,factory));
     }
 
     @Override
-    default ImmutableQueue<ListX<T>> grouped(int groupSize) {
+    default ImmutableQueue<Vector<T>> grouped(int groupSize) {
         return unitStream(stream().grouped(groupSize));
     }
 
@@ -715,7 +693,7 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
         if(pos==0)
             return prependAll(values);
         if(pos>=size())
-            return appendAll(values);
+            return append(values);
         return unitStream(stream().insertAt(pos,values));
     }
 
@@ -723,7 +701,7 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
     default ImmutableQueue<T> appendAll(T... values) {
         ImmutableQueue<T> res = this;
         for(T t : values){
-            res = res.appendAll(t);
+            res = res.append(t);
         }
         return res;
     }
@@ -748,15 +726,7 @@ public interface ImmutableQueue<T> extends Sealed2<ImmutableQueue.Some<T>,Immuta
         return unitStream(stream().insertStreamAt(pos,stream));
     }
 
-    @Override
-    default ImmutableQueue<T> recover(Function<? super Throwable, ? extends T> fn) {
-        return unitStream(stream().recover(fn));
-    }
 
-    @Override
-    default <EX extends Throwable> ImmutableQueue<T> recover(Class<EX> exceptionClass, Function<? super EX, ? extends T> fn) {
-        return unitStream(stream().recover(exceptionClass,fn));
-    }
 
     @Override
     ImmutableQueue<T> minus();

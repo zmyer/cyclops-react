@@ -6,11 +6,9 @@ import com.oath.cyclops.types.Filters;
 import com.oath.cyclops.types.foldable.To;
 import com.oath.cyclops.types.functor.Transformable;
 import cyclops.arrow.*;
-import cyclops.reactive.collections.mutable.ListX;
+import cyclops.data.LazySeq;
 import cyclops.control.*;
-import cyclops.control.Eval;
 import cyclops.control.Maybe;
-import cyclops.control.Trampoline;
 import cyclops.data.ImmutableList;
 import cyclops.function.*;
 import cyclops.reactive.ReactiveSeq;
@@ -30,7 +28,6 @@ import cyclops.data.tuple.Tuple;
 import cyclops.data.tuple.Tuple2;
 import cyclops.data.tuple.Tuple3;
 
-import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 
 import static cyclops.data.tuple.Tuple.tuple;
@@ -133,10 +130,10 @@ public class Active<W,T> implements Filters<T>,
         public <R> R to(Function<S,R> fn);
     }
 
-    public <C,R> R visit(Function<? super Higher<W, T>,? extends C> narrow,Function<? super C,? extends R> visitor){
+    public <C,R> R fold(Function<? super Higher<W, T>,? extends C> narrow, Function<? super C,? extends R> visitor){
         return visitor.apply(narrow.apply(single));
     }
-    public <R> R visit(Function<? super Higher<W, T>,? extends R> visitor){
+    public <R> R fold(Function<? super Higher<W, T>,? extends R> visitor){
         return visitor.apply(single);
     }
     public <R> R visitA(Function<? super Active<W, T>,? extends R> visitor){
@@ -151,7 +148,7 @@ public class Active<W,T> implements Filters<T>,
     }
 
     public Active<W, T> filter(Predicate<? super T> predicate) {
-        return of(def1.monadZero().visit(s -> s.filter(predicate, single), () -> single), def1);
+        return of(def1.monadZero().fold(s -> s.filter(predicate, single), () -> single), def1);
     }
     public <R> Active<W,Tuple2<T, R>> zip(Higher<W, R> fb) {
         return of(def1.applicative().zip(single,fb),def1);
@@ -177,18 +174,18 @@ public class Active<W,T> implements Filters<T>,
         return def1.foldable().allMatch(pred,single);
     }
 
-    public T getAt(int index){
-        return toListX().get(index);
+    public Option<T> getAt(int index){
+        return toLazySeq().get(index);
     }
 
     public Active<W,T> reverse(){
         return of(def1.traverse().reverse(single),def1);
     }
-    public  ListX<T> toListX(){
-        return def1.foldable().listX(single);
+    public LazySeq<T> toLazySeq(){
+        return def1.foldable().lazySeq(single);
     }
     public  ReactiveSeq<T> stream(){
-        return toListX().stream();
+        return toLazySeq().stream();
     }
     public  long size() {
         return def1.foldable().size(single);
@@ -281,21 +278,21 @@ public class Active<W,T> implements Filters<T>,
             return narrow.apply(single);
         }
         public Active<W,T> plus(Monoid<C> m,C add){
-            return sum(m,ListX.of(add));
+            return sum(m,LazySeq.of(add));
         }
-        public Active<W,T> sum(C seed, BinaryOperator<C> op,ListX<C> list){
+        public Active<W,T> sum(C seed, BinaryOperator<C> op,ImmutableList<C> list){
             C res =list.plus(narrow.apply(single)).foldLeft(seed,(a,b)->op.apply(a,b));
             return of(widen.apply(res),def1);
         }
-        public Active<W,T> sum(Monoid<C> s,ListX<C> list){
+        public Active<W,T> sum(Monoid<C> s,ImmutableList<C> list){
             C res =list.plus(narrow.apply(single)).foldLeft(s.zero(),(a,b)->s.apply(a,b));
             return of(widen.apply(res),def1);
         }
-        public Active<W,T> sumInverted(Group<C> s, ListX<C> list){
+        public Active<W,T> sumInverted(Group<C> s, ImmutableList<C> list){
             C res = s.invert(list.plus(narrow.apply(single)).foldLeft(s.zero(),(a,b)->s.apply(a,b)));
             return of(widen.apply(res),def1);
         }
-        public Maybe<Active<W,T>> sum(ListX<C> list){
+        public Maybe<Active<W,T>> sum(ImmutableList<C> list){
             return Active.this.plus().flatMap(s ->
                     Maybe.just(sum(narrow.apply(s.monoid().zero()), (C a, C b) -> narrow.apply(s.monoid().apply(widen.apply(a), widen.apply(b))), list))
             );
@@ -375,15 +372,15 @@ public class Active<W,T> implements Filters<T>,
     }
 
     public Unfolds unfoldsDefault(){
-        return new Unfolds(def1.unfoldable().visit(p->p,()->new Unfoldable.UnsafeValueUnfoldable<>()));
+        return new Unfolds(def1.unfoldable().fold(p->p,()->new Unfoldable.UnsafeValueUnfoldable<>()));
     }
 
 
     public Maybe<Unfolds> unfolds(){
-        return def1.unfoldable().visit(e->Maybe.just(new Unfolds(e)),Maybe::nothing);
+        return def1.unfoldable().fold(e->Maybe.just(new Unfolds(e)),Maybe::nothing);
     }
     public Maybe<Plus> plus(){
-        return def1.monadPlus().visit(e->Maybe.just(new Plus(e)),Maybe::nothing);
+        return def1.monadPlus().fold(e->Maybe.just(new Plus(e)),Maybe::nothing);
     }
 
     @AllArgsConstructor
@@ -528,21 +525,6 @@ public class Active<W,T> implements Filters<T>,
     @Override
     public Active<W,T> notNull() {
         return (Active<W,T>)Filters.super.notNull();
-    }
-
-    @Override
-    public <R> Active<W,R> trampoline(Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-        return (Active<W,R>)Transformable.super.trampoline(mapper);
-    }
-
-    @Override
-    public <R> Active<W,R> retry(Function<? super T, ? extends R> fn) {
-        return (Active<W,R>)Transformable.super.retry(fn);
-    }
-
-    @Override
-    public <R> Active<W,R> retry(Function<? super T, ? extends R> fn, int retries, long delay, TimeUnit timeUnit) {
-        return (Active<W,R>)Transformable.super.retry(fn,retries,delay,timeUnit);
     }
 
 

@@ -7,35 +7,27 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import com.oath.cyclops.types.foldable.To;
-import cyclops.reactive.collections.immutable.LinkedListX;
-import cyclops.reactive.collections.immutable.VectorX;
-import cyclops.control.Option;
-import cyclops.control.Eval;
-import cyclops.control.Maybe;
-import cyclops.control.Try;
+import cyclops.control.*;
 
-import cyclops.reactive.collections.mutable.ListX;
-import cyclops.control.Future;
+import cyclops.data.LazySeq;
+import cyclops.data.Seq;
+import cyclops.data.Vector;
 import cyclops.reactive.ReactiveSeq;
 
 @FunctionalInterface
 public interface Function2<T1, T2, R> extends BiFunction<T1,T2,R>, To<Function2<T1,T2,R>> {
 
-    public static <T1, T2, T3,R> Function2<T1,T2, R> of(final BiFunction<T1,T2, R> triFunc){
+    public static <T1, T2, R> Function2<T1,T2, R> of(final BiFunction<T1,T2, R> triFunc){
     return (a,b)->triFunc.apply(a,b);
   }
-    public static <T1, T2, T3,R> Function2<T1,T2, R> λ(final Function2<T1,T2, R> triFunc){
+    public static <T1, T2, R> Function2<T1,T2, R> λ(final Function2<T1,T2, R> triFunc){
         return triFunc;
     }
-    public static <T1, T2, T3,R> Function2<? super T1,? super T2,? extends R> λv(final Function2<? super T1,? super T2,? extends R> triFunc){
+    public static <T1, T2, R> Function2<? super T1,? super T2,? extends R> λv(final Function2<? super T1,? super T2,? extends R> triFunc){
         return triFunc;
     }
 
     public R apply(T1 a, T2 b);
-
-
-
-
 
     default Function2<T1, T2,  Maybe<R>> lift(){
         Function2<T1, T2,  R> host = this;
@@ -85,9 +77,7 @@ public interface Function2<T1, T2, R> extends BiFunction<T1,T2,R>, To<Function2<
     default <V> Function2<T1, T2, V> andThen(Function<? super R, ? extends V> after) {
         return (t1,t2)-> after.apply(apply(t1,t2));
     }
-    default <V> Function2<T1,T2, V> apply(final BiFunction<? super T1,? super T2,? extends Function<? super R,? extends V>> applicative) {
-      return (a,b) -> applicative.apply(a,b).apply(this.apply(a,b));
-    }
+
 
     default <R1> Function2<T1,T2, R1> mapFn(final Function<? super R, ? extends R1> f2) {
       return andThen(f2);
@@ -104,7 +94,9 @@ public interface Function2<T1, T2, R> extends BiFunction<T1,T2,R>, To<Function2<
 
 
 
-
+        default <V> Function2<T1,T2, V> apply(final BiFunction<? super T1,? super T2,? extends Function<? super R,? extends V>> applicative) {
+            return (a,b) -> applicative.apply(a,b).apply(this.apply(a,b));
+        }
 
         default Function2<ReactiveSeq<T1>,ReactiveSeq<T2>, ReactiveSeq<R>> streamZip() {
             return (a,b) -> a.zip(b,this);
@@ -121,21 +113,21 @@ public interface Function2<T1, T2, R> extends BiFunction<T1,T2,R>, To<Function2<
         }
 
 
-        default Function2<ListX<T1>,ListX<T2>, ListX<R>> listXZip() {
+        default Function2<Seq<T1>,Seq<T2>, Seq<R>> seqZip() {
             return (a,b) -> a.zip(b,this);
         }
 
-        default Function2<ListX<T1>,ListX<T2>, ListX<R>> listXM() {
+        default Function2<Seq<T1>,Seq<T2>, Seq<R>> seqM() {
             return (a,b) -> a.forEach2(x->b,this);
         }
-        default Function2<LinkedListX<T1>,LinkedListX<T2>, LinkedListX<R>> linkedListXZip() {
+        default Function2<LazySeq<T1>,LazySeq<T2>, LazySeq<R>> lazySeqZip() {
             return (a,b) -> a.zip(b,this);
         }
 
-        default Function2<LinkedListX<T1>,LinkedListX<T2>, LinkedListX<R>> linkedListXM() {
+        default Function2<LazySeq<T1>,LazySeq<T2>, LazySeq<R>> linkedSeqM() {
             return (a,b) -> a.forEach2(x->b,this);
         }
-        default Function2<VectorX<T1>,VectorX<T2>, VectorX<R>> vectorXZip() {
+        default Function2<Vector<T1>,Vector<T2>, Vector<R>> vectorZip() {
             return (a,b) -> a.zip(b,this);
         }
 

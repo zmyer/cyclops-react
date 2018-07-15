@@ -3,7 +3,6 @@ package cyclops.monads;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
@@ -11,18 +10,18 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oath.anym.AnyMSeq;
-import com.oath.anym.AnyMValue;
-import com.oath.anym.AnyMValue2;
-import com.oath.anym.internal.adapters.StreamAdapter;
-import com.oath.anym.internal.monads.AnyMValue2Impl;
+import com.oath.cyclops.anym.AnyMSeq;
+import com.oath.cyclops.anym.AnyMValue;
+import com.oath.cyclops.anym.AnyMValue2;
+import com.oath.cyclops.anym.internal.adapters.StreamAdapter;
+import com.oath.cyclops.anym.internal.monads.AnyMValue2Impl;
+import com.oath.cyclops.ReactiveConvertableSequence;
 import com.oath.cyclops.internal.stream.ReactiveStreamX;
 import com.oath.cyclops.types.Filters;
 import com.oath.cyclops.types.MonadicValue;
@@ -34,7 +33,7 @@ import com.oath.cyclops.types.foldable.Folds;
 import com.oath.cyclops.types.foldable.To;
 import com.oath.cyclops.types.functor.Transformable;
 import com.oath.cyclops.types.traversable.IterableX;
-import cyclops.companion.Streams;
+import cyclops.companion.Streamable;
 import cyclops.control.*;
 import cyclops.data.*;
 import cyclops.data.HashSet;
@@ -55,8 +54,8 @@ import cyclops.reactive.collections.mutable.*;
 import org.reactivestreams.Publisher;
 
 import com.oath.cyclops.data.collections.extensions.CollectionX;
-import com.oath.anym.internal.monads.AnyMSeqImpl;
-import com.oath.anym.internal.monads.AnyMValueImpl;
+import com.oath.cyclops.anym.internal.monads.AnyMSeqImpl;
+import com.oath.cyclops.anym.internal.monads.AnyMValueImpl;
 
 
 import cyclops.monads.Witness.completableFuture;
@@ -73,7 +72,7 @@ import cyclops.monads.Witness.tryType;
 import cyclops.monads.Witness.either;
 import cyclops.monads.Witness.*;
 import cyclops.monads.Witness.future;
-import com.oath.anym.extensability.MonadAdapter;
+import com.oath.cyclops.anym.extensability.MonadAdapter;
 import com.oath.cyclops.types.stream.ToStream;
 import cyclops.companion.Optionals;
 
@@ -116,11 +115,8 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
                                                             Transformable<T>,
                                                             ToStream<T>,
                                                             Publisher<T>,
-  Filters<T> {
-    @Override
-    default ReactiveSeq<T> reactiveSeq() {
-        return Streams.oneShotStream(StreamSupport.stream(this.spliterator(),false));
-    }
+                                                            Filters<T> {
+
 
     /**
      * Collect the contents of the monad wrapped by this AnyM into supplied collector
@@ -144,6 +140,13 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
     default <R, A> R collect(Collector<? super T, A, R> collector){
         return this.stream().collect(collector);
     }
+
+    default boolean isEmpty(){
+        return stream().isEmpty();
+    }
+    default boolean isPresent(){
+        return !stream().isEmpty();
+    }
     @Override
     default Iterator<T> iterator() {
 
@@ -151,13 +154,13 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
 
     }
 
-    default <U> AnyMSeq<W,U> unitIterator(Iterator<U> U){
-        return (AnyMSeq<W,U>)adapter().unitIterable(()->U);
+    default <U> AnyM<W,U> unitIterable(Iterable<U> U){
+        return (AnyM<W,U>)adapter().unitIterable(U);
     }
 
     <R> AnyM<W,R> concatMap(Function<? super T, ? extends Iterable<? extends R>> fn);
-    <R> AnyM<W,R> flatMapP(Function<? super T, ? extends Publisher<? extends R>> fn);
-    <R> AnyM<W,R> flatMapS(Function<? super T, ? extends Stream<? extends R>> fn);
+    <R> AnyM<W,R> mergeMap(Function<? super T, ? extends Publisher<? extends R>> fn);
+
     default <R> AnyM<W,R> flatMapA(Function<? super T, ? extends AnyM<W,? extends R>> fn){
         return adapter().flatMap(this, fn);
     }
@@ -168,15 +171,6 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
         return  (AnyM<W,T>)adapter().unitIterable(t);
     }
 
-  @Override
-    default <R> AnyM<W,R> retry(final Function<? super T, ? extends R> fn) {
-        return (AnyM<W,R>)Transformable.super.retry(fn);
-    }
-
-  @Override
-  default <R> AnyM<W,R> retry(final Function<? super T, ? extends R> fn, final int retries, final long delay, final TimeUnit timeUnit) {
-    return (AnyM<W,R>)Transformable.super.retry(fn,retries,delay,timeUnit);
-  }
 
   /**
      * Construct a new instanceof AnyM using the type of the underlying wrapped monad
@@ -260,12 +254,12 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
     }
 
 
-    default <R> AnyM<W,R> coflatMapA(final Function<? super AnyM<W,T>, R> mapper) {
+    default <R> AnyM<W,R> coflatMap(final Function<? super AnyM<W,T>, R> mapper) {
         return unit(Lambda.λ(()->mapper.apply(this))).map(Supplier::get);
     }
 
 
-    default AnyM<W,AnyM<W,T>> nestA() {
+    default AnyM<W,AnyM<W,T>> nest() {
         return unit(this);
     }
 
@@ -366,9 +360,7 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
     static <W extends WitnessType<W>,T1> AnyM<W,T1> flatten(AnyM<W,? extends AnyM<W,T1>> nested){
         return nested.flatMapA(Function.identity());
     }
-    static <W extends WitnessType<W>,T1> AnyM<W,T1> flattenI(AnyM<W,? extends Iterable<T1>> nested){
-        return nested.concatMap(Function.identity());
-    }
+
 
 
     /**
@@ -393,11 +385,12 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
      * @param next Monad to aggregate content with
      * @return Aggregated Monad
      */
-    default AnyM<W,List<T>> aggregate(AnyM<W,T> next){
-        return unit(Stream.concat(matchable().visit(value -> value.stream(), seq -> seq.stream()), next.matchable()
-                                  .visit(value -> value.stream(),
-                                         seq -> seq.stream()))
-                    .collect(Collectors.toList()));
+    default AnyM<W,Seq<T>> aggregate(AnyM<W,T> next){
+        ReactiveSeq<T> s = matchable().fold(value -> value.stream(), seq -> seq.stream());
+        ReactiveSeq<T> s2 = next.matchable().fold(value -> value.stream(), seq -> seq.stream());
+        Seq<T> ag = ReactiveSeq.concat(s, s2)
+            .toSeq();
+        return unit(ag);
     }
 
 
@@ -614,7 +607,7 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
         if(stream instanceof ReactiveStreamX) {
             return AnyMFactory.instance.seq(stream, reactiveSeq.REACTIVE);
         }else{
-            return AnyMFactory.instance.seq(stream, reactiveSeq.CO_REACTIVE);
+            return AnyMFactory.instance.seq(stream, reactiveSeq.ITERATIVE);
         }
 
     }
@@ -753,11 +746,11 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
         Objects.requireNonNull(xor);
         return AnyMFactory.instance.value2(xor, either.INSTANCE);
     }
-    public static <ST,T> AnyMValue2<either,ST,T> lazyRight(final T p) {
+    public static <ST,T> AnyMValue2<either,ST,T> right(final T p) {
         Objects.requireNonNull(p);
         return fromEither(Either.right(p));
     }
-    public static <ST,T> AnyMValue2<either,ST,T> lazyLeft(final ST s) {
+    public static <ST,T> AnyMValue2<either,ST,T> left(final ST s) {
         Objects.requireNonNull(s);
         return fromEither(Either.left(s));
     }
@@ -772,11 +765,11 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
         Objects.requireNonNull(xor);
         return AnyMFactory.instance.value2(xor, lazyEither.INSTANCE);
     }
-    public static <LT1,T> AnyMValue2<lazyEither,LT1,T> right(final T right) {
+    public static <LT1,T> AnyMValue2<lazyEither,LT1,T> lazyRight(final T right) {
         Objects.requireNonNull(right);
         return fromLazyEither(LazyEither.right(right));
     }
-    public static <LT1,T> AnyMValue2<lazyEither,LT1,T> left(final LT1 left) {
+    public static <LT1,T> AnyMValue2<lazyEither,LT1,T> lazyLeft(final LT1 left) {
         Objects.requireNonNull(left);
         return fromLazyEither(LazyEither.left(left));
     }
@@ -902,7 +895,7 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
         Objects.requireNonNull(maybe);
         return AnyMFactory.instance.value(maybe, Witness.maybe.INSTANCE);
     }
-    public static <T> AnyMValue<option,T> fromMaybe(final Option<T> option) {
+    public static <T> AnyMValue<option,T> fromOption(final Option<T> option) {
       Objects.requireNonNull(option);
       return AnyMFactory.instance.value(option, Witness.option.INSTANCE);
     }
@@ -1002,7 +995,8 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
     public static <ST, LT2, LT3,LT4,T> ListX<AnyMValue<lazyEither5,T>> listFromEither5(final Iterable<LazyEither5<ST, LT2, LT3, LT4, T>> anyM) {
         return ReactiveSeq.fromIterable(anyM)
                 .map(e -> fromEither5(e))
-                .toListX();
+                .to(ReactiveConvertableSequence::converter)
+                .listX();
     }
 
     /**
@@ -1020,7 +1014,8 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
     public static <ST, LT2, LT3,T> ListX<AnyMValue<lazyEither4,T>> listFromEither4(final Iterable<LazyEither4<ST, LT2, LT3, T>> anyM) {
         return ReactiveSeq.fromIterable(anyM)
                 .map(e -> fromEither4(e))
-                .toListX();
+                .to(ReactiveConvertableSequence::converter)
+                .listX();
     }
     /**
      * Take an iterable containing Either3s and convert them into a List of AnyMs
@@ -1037,7 +1032,8 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
     public static <ST, LT2, T> ListX<AnyMValue<lazyEither3,T>> listFromEither3(final Iterable<LazyEither3<ST, LT2, T>> anyM) {
         return ReactiveSeq.fromIterable(anyM)
                 .map(e -> AnyM.fromEither3(e))
-                .toListX();
+                .to(ReactiveConvertableSequence::converter)
+                .listX();
     }
     /**
      * Take an iterable containing Either3s and convert them into a List of AnyMs
@@ -1055,7 +1051,8 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
         Objects.requireNonNull(anyM);
         return ReactiveSeq.fromIterable(anyM)
                 .map(e -> AnyM.fromLazyEither(e))
-                .toListX();
+                .to(ReactiveConvertableSequence::converter)
+                .listX();
     }
     /**
      * Take an iterable containing Streams and convert them into a List of AnyMs
@@ -1228,7 +1225,7 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
      * @return Monad with a List
      */
     public static <W extends WitnessType<W>,T1> AnyM<W,ListX<T1>> sequence(final Collection<? extends AnyM<W,T1>> seq,W w) {
-        return sequence(seq.stream(),w).map(s->ReactiveSeq.fromStream(s).to().listX(LAZY));
+        return sequence(seq.stream(),w).map(s->ReactiveSeq.fromStream(s).to(ReactiveConvertableSequence::converter).listX(LAZY));
     }
 
     /**
@@ -1516,8 +1513,4 @@ public interface AnyM<W extends WitnessType<W>,T> extends Unwrapable,
 
 
 
-    @Override
-    default <R> AnyM<W,R> trampoline(final Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-        return (AnyM<W, R>) Transformable.super.trampoline(mapper);
-    }
 }

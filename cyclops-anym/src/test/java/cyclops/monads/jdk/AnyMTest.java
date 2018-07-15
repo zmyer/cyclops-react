@@ -11,15 +11,16 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oath.anym.AnyMSeq;
-import cyclops.reactive.collections.immutable.VectorX;
+import com.oath.cyclops.anym.AnyMSeq;
+import cyclops.data.Seq;
+import cyclops.data.Vector;
+import cyclops.monads.Witness.optional;
 import cyclops.monads.Witness;
 import cyclops.monads.function.AnyMFunction1;
 import cyclops.monads.function.AnyMFunction2;
@@ -32,19 +33,8 @@ import cyclops.monads.AnyM;
 import cyclops.control.Maybe;
 
 
-import lombok.val;
-
-
 public class AnyMTest {
-	/** no longer compiles!
-	@Test
-	public void multiReturn(){
-		AnyMValue<Integer> stream = AnyM.fromOptional(Optional.of(1))
-									.flatMap(i->ReactiveSeq.of(1,2,i).anyM());
 
-		stream.map(i->i+2);
-	}
-	**/
     @Test
     public void listTest(){
         List<String> l = AnyM.fromList(Arrays.asList(1,2,3))
@@ -190,8 +180,8 @@ public class AnyMTest {
 
         assertThat("cba",equalTo( s.get().stream().foldRight(Reducers.toString(""))));
         assertThat("abc",equalTo( s.get().stream().reduce(Reducers.toString(""))));
-        assertThat( 3,equalTo( s.get().map(i->""+i.length()).stream().foldRightMapToType(Reducers.toCountInt())));
-        assertThat( 3,equalTo( s.get().map(i->""+i.length()).stream().mapReduce(Reducers.toCountInt())));
+        assertThat( 3,equalTo( s.get().map(i->""+i.length()).stream().foldMapRight(Reducers.toCountInt())));
+        assertThat( 3,equalTo( s.get().map(i->""+i.length()).stream().foldMap(Reducers.toCountInt())));
 
     }
 
@@ -212,13 +202,6 @@ public class AnyMTest {
 	public void testFlatMap(){
 		AnyMSeq<Witness.stream,List<Integer>> m  = fromStream(Stream.of(Arrays.asList(1,2,3),Arrays.asList(1,2,3)));
 		AnyM<Witness.stream,Integer> intM = m.flatMap( c -> fromStream(c.stream()));
-		List<Integer> list = intM.stream().toList();
-		assertThat(list,equalTo(Arrays.asList(1, 2, 3, 1, 2, 3)));
-	}
-	@Test
-	public void testBind(){
-		AnyM<Witness.stream,List<Integer>> m  = fromStream(Stream.of(Arrays.asList(1,2,3),Arrays.asList(1,2,3)));
-		AnyM<Witness.stream,Integer> intM = m.flatMapS(Collection::stream);
 		List<Integer> list = intM.stream().toList();
 		assertThat(list,equalTo(Arrays.asList(1, 2, 3, 1, 2, 3)));
 	}
@@ -254,7 +237,7 @@ public class AnyMTest {
 
 	@Test
 	public void sliding(){
-		List<VectorX<Integer>> list = fromStream(Stream.of(1,2,3,4,5,6))
+		List<Seq<Integer>> list = fromStream(Stream.of(1,2,3,4,5,6))
 									.stream()
 									.sliding(2)
 									.collect(Collectors.toList());
@@ -265,7 +248,7 @@ public class AnyMTest {
 	}
 	@Test
 	public void slidingIncrement(){
-		List<VectorX<Integer>> list = fromStream(Stream.of(1,2,3,4,5,6))
+		List<Seq<Integer>> list = fromStream(Stream.of(1,2,3,4,5,6))
 									.stream()
 									.sliding(3,2)
 									.collect(Collectors.toList());
@@ -277,7 +260,7 @@ public class AnyMTest {
 	@Test
 	public void grouped(){
 
-		List<List<Integer>> list = fromStream(Stream.of(1,2,3,4,5,6))
+		List<Vector<Integer>> list = fromStream(Stream.of(1,2,3,4,5,6))
 									.stream()
 									.grouped(3)
 									.collect(Collectors.toList());
@@ -293,12 +276,9 @@ public class AnyMTest {
 	public void startsWith(){
 		assertTrue(fromStream(Stream.of(1,2,3,4))
 						.stream()
-						.startsWithIterable(Arrays.asList(1,2,3)));
+						.startsWith(Arrays.asList(1,2,3)));
 	}
-	@Test
-	public void startsWithIterator(){
-		assertTrue(fromStream(Stream.of(1,2,3,4)).stream().startsWith(Arrays.asList(1,2,3).stream()));
-	}
+
 
 	@Test
     public void scanLeft() {
@@ -317,12 +297,12 @@ public class AnyMTest {
 	public void reducer1(){
 		Monoid<Integer> sum = Monoid.of(0,(a,b)->a+b);
 		Monoid<Integer> mult = Monoid.of(1,(a,b)->a*b);
-		val result = fromStream(Stream.of(1,2,3,4))
-						.stream()
-						.reduce(Arrays.asList(sum,mult).stream() );
+        Seq<Integer> result = fromStream(Stream.of(1, 2, 3, 4))
+            .stream()
+            .reduce(Arrays.asList(sum, mult));
 
 
-		assertThat(result,equalTo(Arrays.asList(10,24)));
+		assertThat(result,equalTo(Seq.of(10,24)));
 	}
 
 
@@ -332,19 +312,19 @@ public class AnyMTest {
 		List<Integer> result = fromStream(Stream.of(1,2,3,4))
 								.aggregate(AnyM.fromArray(5))
 								.stream()
-							    .flatMap(List::stream)
+							    .concatMap(Seq::stream)
 								.toList();
 
 		assertThat(result,equalTo(Arrays.asList(1,2,3,4,5)));
 	}
 	@Test
 	public void aggregate2(){
-		List<Integer> result = AnyM.fromOptional(Optional.of(1))
+		Seq<Integer> result = AnyM.fromOptional(Optional.of(1))
 								.aggregate(AnyM.ofNullable(2))
 								.stream()
 								.toList().get(0);
 
-		assertThat(result,equalTo(Arrays.asList(1,2)));
+		assertThat(result,equalTo(Seq.of(1,2)));
 	}
 
 
@@ -384,9 +364,9 @@ public class AnyMTest {
 
 	@Test
 	public void testLiftMSimplex(){
-		AnyMFunction1<Witness.optional,Integer,Integer> lifted = AnyM.liftF((Integer a)->a+3);
+		AnyMFunction1<optional,Integer,Integer> lifted = AnyM.liftF((Integer a)->a+3);
 
-		AnyM<Witness.optional,Integer> result = lifted.apply(AnyM.ofNullable(3));
+		AnyM<optional,Integer> result = lifted.apply(AnyM.ofNullable(3));
 
 		assertThat(result.<Optional<Integer>>unwrap().get(),equalTo(6));
 	}
@@ -395,25 +375,25 @@ public class AnyMTest {
 
 	@Test
 	public void testLiftM2Simplex(){
-		AnyMFunction2<Witness.optional,Integer,Integer,Integer> lifted = AnyM.liftF2((Integer a, Integer b)->a+b);
+		AnyMFunction2<optional,Integer,Integer,Integer> lifted = AnyM.liftF2((Integer a, Integer b)->a+b);
 
-		AnyM<Witness.optional,Integer> result = lifted.apply(AnyM.ofNullable(3),AnyM.ofNullable(4));
+		AnyM<optional,Integer> result = lifted.apply(AnyM.ofNullable(3),AnyM.ofNullable(4));
 
 		assertThat(result.<Optional<Integer>>unwrap().get(),equalTo(7));
 	}
 	@Test
     public void testLiftM2AnyMValue(){
-		AnyMFunction2<Witness.optional,Integer,Integer,Integer> lifted = AnyM.liftF2((Integer a, Integer b)->a+b);
+		AnyMFunction2<optional,Integer,Integer,Integer> lifted = AnyM.liftF2((Integer a, Integer b)->a+b);
 
-        AnyM<Witness.optional,Integer> result = lifted.apply(AnyM.ofNullable(3),AnyM.ofNullable(4));
+        AnyM<optional,Integer> result = lifted.apply(AnyM.ofNullable(3),AnyM.ofNullable(4));
 
         assertThat(result.<Optional<Integer>>unwrap().get(),equalTo(7));
     }
 	@Test
 	public void testLiftM2SimplexNull(){
-		AnyMFunction2<Witness.optional,Integer,Integer,Integer> lifted = AnyM.liftF2((Integer a, Integer b)->a+b);
+		AnyMFunction2<optional,Integer,Integer,Integer> lifted = AnyM.liftF2((Integer a, Integer b)->a+b);
 
-		AnyM<Witness.optional,Integer> result = lifted.apply(AnyM.ofNullable(3),AnyM.ofNullable(null));
+		AnyM<optional,Integer> result = lifted.apply(AnyM.ofNullable(3),AnyM.ofNullable(null));
 
 		assertThat(result.<Optional<Integer>>unwrap().isPresent(),equalTo(false));
 	}
@@ -423,11 +403,11 @@ public class AnyMTest {
 	}
 	@Test
 	public void testLiftM2Mixed(){
-		AnyMFunction2<Witness.optional,Integer,Integer,Integer> lifted = AnyM.liftF2(this::add);
+		AnyMFunction2<optional,Integer,Integer,Integer> lifted = AnyM.liftF2(this::add);
 
-		AnyM<Witness.optional,Integer> result = lifted.apply(AnyM.ofNullable(3),AnyM.ofNullable(4));
+		AnyM<optional,Integer> result = lifted.apply(AnyM.ofNullable(3),AnyM.ofNullable(4));
 
 
-		assertThat(result.<Optional<List<Integer>>>unwrap().get(),equalTo(7));
+		assertThat(result.<Optional<Integer>>unwrap().get(),equalTo(7));
 	}
 }

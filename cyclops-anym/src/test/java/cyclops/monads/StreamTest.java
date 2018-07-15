@@ -1,14 +1,14 @@
 package cyclops.monads;
 
+import com.oath.cyclops.ReactiveConvertableSequence;
 import com.oath.cyclops.data.collections.extensions.IndexedSequenceX;
-import com.oath.cyclops.types.stream.HeadAndTail;
 import cyclops.companion.Semigroups;
 import cyclops.control.Future;
+import cyclops.data.Seq;
 import cyclops.futurestream.LazyReact;
-import cyclops.reactive.collections.immutable.VectorX;
+import cyclops.monads.transformers.VectorT;
 import cyclops.reactive.collections.mutable.ListX;
 import cyclops.reactive.collections.mutable.SetX;
-import cyclops.companion.FutureStreamSemigroups;
 import cyclops.monads.Witness.reactiveSeq;
 import cyclops.monads.transformers.ListT;
 import cyclops.reactive.ReactiveSeq;
@@ -76,14 +76,14 @@ public class StreamTest {
   public void combineNoOrderAnyM(){
     assertThat(AnyM.fromStream(ReactiveSeq.of(1,2,3))
       .combine((a, b)->a.equals(b), Semigroups.intSum)
-      .toListX(),equalTo(ListX.of(1,2,3)));
+      .to(ReactiveConvertableSequence::converter).listX(),equalTo(ListX.of(1,2,3)));
 
   }
 
   @Test
   public void groupedT(){
 
-    ListT<reactiveSeq,Integer> nestedList = AnyM.fromStream(ReactiveSeq.of(1,2,3,4,5,6,7,8,9,10))
+    VectorT<reactiveSeq,Integer> nestedList = AnyM.fromStream(ReactiveSeq.of(1,2,3,4,5,6,7,8,9,10))
       .groupedT(2)
       .map(i->i*2);
 
@@ -112,7 +112,7 @@ public class StreamTest {
   @Test
   public void comonad(){
     AnyM.fromOptional(Optional.of(1))
-      .coflatMap(v->v.isPresent()?v.toOptional().get() : 10);
+      .coflatMap(v->v.takeOne().orElse(10));
 
   }
   public int loadData(int size){
@@ -174,18 +174,7 @@ public class StreamTest {
     f = just.concatMap(i -> AnyM.fromStream(ReactiveSeq.of(20, i, 30)));
     assertThat(f.orElse(-50), equalTo(20));
   }
-  @Test
-  public void headTailReplay(){
 
-    ReactiveSeq<String> helloWorld = AnyM.streamOf("hello","world","last").stream();
-    HeadAndTail<String> headAndTail = helloWorld.headAndTail();
-    String head = headAndTail.head();
-    assertThat(head,equalTo("hello"));
-
-    ReactiveSeq<String> tail =  headAndTail.tail();
-    assertThat(tail.headAndTail().head(),equalTo("world"));
-
-  }
   @Test
   public void zipOptional(){
     Stream<List<Integer>> zipped = AnyMs.zipAnyM(Stream.of(1,2,3)
@@ -214,7 +203,7 @@ public class StreamTest {
   public void lazy(){
 
 
-    ListX<VectorX<String>> list =     ListX.of(1,2,3,5,6,7,8)
+    ListX<Seq<String>> list =     ListX.of(1,2,3,5,6,7,8)
       .map(i->i*2)
       .filter(i->i<4)
       .sliding(2)

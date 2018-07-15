@@ -178,7 +178,7 @@ public class Tuple4<T1,T2,T3,T4> implements To<Tuple4<T1,T2,T3,T4>>,
         return lazy(() -> _1(), () -> _2(),()->_3(),()->fn.apply(_4()));
     }
 
-    public <R> R visit(Function4<? super T1, ? super T2, ? super T3,? super T4, ? extends R> fn){
+    public <R> R fold(Function4<? super T1, ? super T2, ? super T3,? super T4, ? extends R> fn){
         return fn.apply(_1(),_2(),_3(),_4());
     }
 
@@ -227,4 +227,46 @@ public class Tuple4<T1,T2,T3,T4> implements To<Tuple4<T1,T2,T3,T4>>,
         }
         return result;
     }
+
+    public final Object[] toArray() {
+        return new Object[] { _1(),_2(),_3(),_4() };
+    }
+
+    public  <  T5> Tuple5<T1, T2, T3, T4, T5>  concat(Tuple1<T5> tuple) {
+        return Tuple.tuple(_1(),_2(),_3(),_4(),tuple._1());
+    }
+    public  <T5, T6> Tuple6<T1, T2, T3, T4, T5, T6> concat(Tuple2<T5,T6> tuple) {
+        return  Tuple.tuple(_1(),_2(),_3(),_4(),tuple._1(),tuple._2());
+    }
+
+
+    public  <T5, T6, T7> Tuple7<T1, T2, T3, T4, T5, T6, T7> concat(Tuple3<T5, T6, T7> tuple) {
+        return  Tuple.tuple(_1(),_2(),_3(),_4(),tuple._1(), tuple._2(), tuple._3());
+    }
+
+
+    public  <T5, T6, T7, T8> Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>  concat(Tuple4<T5, T6, T7, T8> tuple) {
+        return  Tuple.tuple(_1(),_2(),_3(),_4(), tuple._1(), tuple._2(), tuple._3(), tuple._4());
+    }
+
+    public  <T5> Tuple5<T1, T2, T3, T4, T5>  lazyConcat(Tuple1<T5> tuple) {
+        return Tuple.lazy(()->_1(),()->_2,()->_3,()->_4,()->tuple._1());
+    }
+    public  <T5, T6> Tuple6<T1, T2, T3, T4, T5, T6> lazyConcat(Tuple2<T5,T6> tuple) {
+        return Tuple.lazy(()->_1(),()->_2,()->_3,()->_4,()->tuple._1(),()->tuple._2());
+    }
+
+
+    public  <T5, T6, T7> Tuple7<T1, T2, T3, T4, T5, T6, T7> lazyConcat(Tuple3<T5, T6, T7> tuple) {
+        return Tuple.lazy(()->_1(),()->_2,()->_3,()->_4, ()->tuple._1(), ()->tuple._2(), ()->tuple._3());
+    }
+
+
+    public  <T5, T6, T7, T8> Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> lazyConcat(Tuple4<T5, T6, T7, T8> tuple) {
+        return Tuple.lazy(()->_1(),()->_2,()->_3,()->_4, ()->tuple._1(), ()->tuple._2(), ()->tuple._3(), ()->tuple._4());
+    }
+
+
+
+
 }

@@ -12,13 +12,64 @@ Cyclops pure provides support for advanced functional data structures and higher
 * [transformers](https://github.com/aol/cyclops-react/tree/master/cyclops-pure/src/main/java/cyclops/transformers) : monad transformer interface definitions
 * [hkt](https://github.com/aol/cyclops-react/tree/master/cyclops-pure/src/main/java/cyclops/hkt) : Manager classes to make working with Higher Kinded typeclasses cleaner in Java
 
+# Type dictionary
+
+
+### cyclops.typeclasses
+
+| type | description | characteristics |
+|------|-------------|-----------------|
+| Pure     | Embed a value inside a type            | Higher kinded                 |
+| Functor     | Transform embedded values            | Higher kinded                 |
+| ContravariantFunctor     | Transform embedded values contravariantly            | Higher kinded                 |
+| BiFunctor     | Transform two embedded values  simulatanously          | Higher kinded                 |
+| ProFunctor     | Transform two embedded values  simulatanously, one contravariantly one covariantly          | Higher kinded                 |
+| Compose     | Compose two functors          | Higher kinded                 |
+| Applicative     | Apply a function to embedded values            | Higher kinded                 |
+| Monad     | Apply flattening transformations to embedded values            | Higher kinded                 |
+| Traverse     | Invert two nested applicative types (e.g. a List of Futures to a Future with a Lists) applying a function in the process            | Higher kinded                 |
+| Foldable     | Reduce embedded values to a single extracted value            | Higher kinded                 |
+| Unfoldable     | Expand values and structures into larger sequences           | Higher kinded                 |
+| MonadZero     | Filter a monad (e.g. like Optional.filter)            | Higher kinded                 |
+| MonadPlus     | Combine two monads            | Higher kinded                 |
+| MonadRec     | Stackless recursion using monadic types            | Higher kinded                 |
+| Comonad     | Extract values from a context and extend functions to operat at monadic level            | Higher kinded                 |
+| Nested     | Work cleanly with nested types (such as a List of Streams etc)      | Higher kinded ,Lazy              |
+| Active     | Work cleanly with type classes (captures both the Higher kinded type and all it's type classes to simplify access)      | Higher kinded ,Lazy              |
+| Free     | Higher kinded implementation of the Free monad for Java, facilitates functional interpreters. Free + SupplierKind (higher kinded Fn0) = a more advanced Trampoline implementation.            | Higher kinded ,Lazy,  tail recursive, concurrent                |
+| FreeAp     | Free Applicative   | Higher kinded               |
+| Yoneda     | Higher kinded implementation of the Yoneda lemma  | Higher kinded ,Lazy                |
+| Coyoneda     | Higher kinded implementation of Coyoneda,provides a functor instance for HKT encoded data types, useful when working with Free            |Higher kinded , Lazy             |
+| Kleisli    | A functional interface that represents a manipulatable function that takes a  value and returns a monad            | Higher kinded                 |
+| Cokleisli    | A functional interface that represents a manipulatable function that takes a monad and returns a value           | Higher kinded                 |
+| Writer     | Monad / Wrapper type that supports the accumulation of a values using a Monoid            | Eager                |
+| State     | State Monad to manage state  / state transformations in a functional manner (backed by Free)            | Lazy                |
+| Reader     | A transformable function : useful to implement dependency injection or Singletons in a functional style            |                 |
+| Coreader     | A contravariant reader            |                 |
+| IO     | reactive-streams based IO monad           | Lazy / reactive                |
+| Identity     | Identity monad            | Strict                |
+| Constant     | Value with a typer and a  phantom type            | Strict                |
+| MultiMapHK     | Higher Kinded Multimap            | Strict                |
+| FunctionK     | A Higher Kinded Function (syntax sugar for kinds)           | Higher Kinded                 |
+| SemigroupK     | A Higher Kinded Semigroup (syntax sugar for kinds)           | Higher Kinded                 |
+| MonoidK     | A Higher Kinded Monoid (syntax sugar for kinds)           | Higher Kinded                 |
+| GroupK     | A Higher Kinded Group (syntax sugar for kinds)           | Higher Kinded                 |
+| Comprehensions    | For comprehensions for higher kinded monadic types           | Higher Kinded                |
+| Show    | Show type class (convert to string)           | Higher Kinded                |
+| Transformer    | Monad transformer           | Higher Kinded                |
+| Active     | Manage a higher kinded type instance in a more Java friendly manner (links typeclasses to kinds)            | Higher kinded                 |
+| Product     | Manage two higher kinded type instances in a more Java friendly manner (links typeclasses to kinds). The managed types can be of different kinds but must have the same type           | Higher kinded                 |
+| Nested     | Manage two nested higher kinded type instances in a more Java friendly manner (links typeclasses to kinds)            | Higher kinded                 |
+| Coproduct     | Manage one of two  higher kinded type instances in a more Java friendly manner (links typeclasses to kinds)  - like a Higher Kinded Either type           | Higher kinded                 |
+
+
 Since cyclops 10.0.0-M5
 
 ### cyclops-pure builds on top of cyclops
 
 The core Cyclops module provides a range of general purpose and purely functional data types
 
-* [cyclops control](https://github.com/aol/cyclops-react/tree/master/cyclops/src/main/java/cyclops/control) : Control types such as Option, Either, Try, Future and Lazy analogues such as Maybe, LazyEither. 
+* [cyclops control](https://github.com/aol/cyclops-react/tree/master/cyclops/src/main/java/cyclops/control) : Control types such as Option, Either, Try, Future and Lazy analogues such as Maybe, LazyEither.
 * [cyclops data](https://github.com/aol/cyclops-react/tree/master/cyclops/src/main/java/cyclops/data) : Purely functional data types such as Vector (bitmapped array trie), HashMap (hash array mapped trie), Seq (linked list), LazySeq (lazy list), DifferenceList, NonEmptyList, Zipper, HashSet, BankersQueue, Discrete Interval Encoded Trie and more)
 * [cyclops reactive](https://github.com/aol/cyclops-react/tree/master/cyclops/src/main/java/cyclops/reactive) : API for both iterative and reactive based streaming
 
@@ -41,3 +92,109 @@ The core Cyclops module provides a range of general purpose and purely functiona
 * [Monoids for Java Developers](https://medium.com/@johnmcclean/monoids-for-java-developers-98e2ba94f708) : Introduction to monoids, semigroups and groups using cyclops
 * [Cyclops Higher Kinded Types](https://github.com/aol/cyclops/wiki/Higher-Kinded-Types) : Higher Kinded Types in Cyclops
 * [Applicative Type Class in Cyclops](https://github.com/aol/cyclops/wiki/Type-Classes-:-Applicative) : Applicative type class in Cyclops
+
+## Using Typeclasses
+
+### Directly
+
+Typeclasses can be used directly (although this results in verbose and somewhat cumbersome code)
+e.g. using the Pure and Functor typeclasses for Flux
+
+```java
+
+   Pure<flux> pure = Fluxs.Instances.unit();
+   Functor<flux> functor = Fluxs.Instances.functor();
+
+   FluxKind<Integer> flux = pure.unit("hello")
+                                  .applyHKT(h->functor.map((String v) ->v.length(), h))
+                                  .convert(FluxKind::narrowK);
+
+
+   assertThat(list.collectList().block(),equalTo(Arrays.asList("hello".length())));
+```
+
+### Via Active
+
+The Active class represents a Higher Kinded encoding of a Reactor (or cyclops-react/ JDK/ Vavr / rx etc) type *and* it's associated type classes
+
+The code above which creates a new Flux containing a single element "hello" and transforms it to a Flux of Integers (the length of each word), can be written much more succintly with Active
+
+```java
+
+Active<flux,Integer> active = Fluxs.allTypeClasses(Flux.empty());
+
+Active<flux,Integer> hello = active.unit("hello")
+                                   .map(String::length);
+
+Flux<Integer> stream = FluxKind.narrow(hello.getActive());
+
+```
+
+### Via Nested
+
+The Nested class represents a Nested data structure, for example a Mono with a Flux *and* the associated typeclass instances for both types.
+
+```java
+import cyclops.companion.reactor.Monos.MonoNested;
+
+Nested<mono,flux,Integer> monoFlux  = MonoNested.list(Mono.just(Flux.just(1,10,2,3)))
+                                                                       .map(i -> i * 20);
+
+Mono<Integer> opt  = monoFlux.foldsUnsafe()
+                               .foldLeft(Monoids.intMax)
+                               .convert(MonoKind::narrowK);
+
+
+//[200]
+
+```
+
+### Via Coproduct
+
+Coproduct is a Sum type for HKT encoded types that also stores the associated type classes
+
+```java
+import static
+Coproduct<flux,mono,Integer> nums = Monos.coproduct(10,Fluxs.Instances.definitions());
+
+
+int value = nums.map(i->i*2)
+                .foldUnsafe()
+                .foldLeft(0,(a,b)->a+b);
+
+//20
+
+```
+
+
+## Direct examples with Mono
+
+We can use MonoKind to encode Mono at a higher level of abstraction.
+```java
+MonoKind<Integer> mono = MonoKind.widen(Mono.just(1));
+```
+MonoKind implements the Higher interface which captures that our type is both a Mono and takes a data type of Integer
+
+```java
+Higher<mono, Integer> higher = mono;
+```
+
+We can use the Traverse and Applicative typeclasses to sequence a Mono with a Maybe into a Maybe with a Mono.
+```java
+Traverse<mono> traverse = Monos.Instances.traverse();
+Applicative<Maybe.µ> applicative = MaybeInstances.applicative();
+```
+
+```java
+Traverse<mono> traverse = Monos.Instances.traverse();
+Applicative<Maybe.µ> applicative = MaybeInstances.applicative();
+
+Higher<Maybe.µ, Higher<mono, Integer>> result = traverse.sequenceA(applicative, MonoKind.widen(Mono.just(Maybe.just(1))));
+```
+Our result is a little ugly - we should convert it back into a more readable form.
+
+```java
+Maybe<Mono<Integer>> nk = res.convert(Maybe::narrowK)
+                             .map(h -> h.convert(MonoKind::narrow));
+```
+

@@ -1,9 +1,10 @@
 package cyclops.control;
 
 import com.oath.cyclops.types.MonadicValue;
+import com.oath.cyclops.types.persistent.PersistentSet;
 import com.oath.cyclops.util.box.Mutable;
-import cyclops.reactive.collections.immutable.PersistentSetX;
-import cyclops.reactive.collections.mutable.ListX;
+
+
 import com.oath.cyclops.types.Zippable;
 import com.oath.cyclops.types.mixins.Printable;
 import cyclops.companion.Monoids;
@@ -11,6 +12,7 @@ import cyclops.companion.Reducers;
 import cyclops.companion.Semigroups;
 import cyclops.companion.Streams;
 import cyclops.control.Maybe.CompletableMaybe;
+import cyclops.data.HashSet;
 import cyclops.function.Monoid;
 import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.Spouts;
@@ -49,6 +51,9 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
 
   @Test
   public void testMaybeWithNull() {
+      assertThat(Maybe.fromEval(Eval.later(()->null)),equalTo(Maybe.just(null)));
+      assertThat(Maybe.fromEvalNullable(Eval.later(()->null)),equalTo(Maybe.nothing()));
+      assertThat(Maybe.fromLazyOption(Eval.later(()->Option.none())),equalTo(Maybe.nothing()));
     System.out.println(Maybe.of(null).toString());
     System.out.println(Maybe.just(null).toString());
     System.out.println(Either.left(null).toString());
@@ -190,22 +195,6 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
         return n == 0 ? b : fib(n - 1, a + b, a);
     }
 
-    @Test
-    public void nest() {
-        assertThat(just.nest().map(m -> m.toOptional().get()), equalTo(just));
-        assertThat(none.nest().map(m -> m.toOptional().get()), equalTo(none));
-    }
-
-    @Test
-    public void coFlatMap() {
-
-        Maybe.nothing().coflatMap(m -> m.isPresent() ? m.toOptional().get() : 10);
-
-        // Maybe[10]
-
-        assertThat(just.coflatMap(m -> m.isPresent() ? m.toOptional().get() : 50), equalTo(just));
-        assertThat(none.coflatMap(m -> m.isPresent() ? m.toOptional().get() : 50), equalTo(Maybe.of(50)));
-    }
 
     @Test
     public void combine() {
@@ -236,7 +225,7 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
     @Test
     public void oddBug() {
 
-        even(Maybe.just(200000)).visit(i->{
+        even(Maybe.just(200000)).fold(i->{
             System.out.println(i);
             return null;
         },()->null);
@@ -296,40 +285,40 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
 
     @Test
     public void testSequenceLazy() {
-        Maybe<ReactiveSeq<Integer>> maybes = Maybe.sequence(ListX.of(just, none, Maybe.of(1)));
+        Maybe<ReactiveSeq<Integer>> maybes = Maybe.sequence(Arrays.asList(just, none, Maybe.of(1)));
 
         assertThat(maybes, equalTo(Maybe.just(1).flatMap(i -> Maybe.nothing())));
     }
 
     @Test
     public void testSequence() {
-        Maybe<ReactiveSeq<Integer>> maybes = Maybe.sequence(ListX.of(just, none, Maybe.of(1)));
+        Maybe<ReactiveSeq<Integer>> maybes = Maybe.sequence(Arrays.asList(just, none, Maybe.of(1)));
 
         assertThat(maybes, equalTo(Maybe.nothing()));
     }
 
     @Test
     public void testSequenceJust() {
-        Maybe<ReactiveSeq<Integer>> maybes = Maybe.sequenceJust(ListX.of(just, none, Maybe.of(1)));
-        assertThat(maybes.map(s->s.toList()), equalTo(Maybe.of(ListX.of(10, 1))));
+        Maybe<ReactiveSeq<Integer>> maybes = Maybe.sequenceJust(Arrays.asList(just, none, Maybe.of(1)));
+        assertThat(maybes.map(s->s.toList()), equalTo(Maybe.of(Arrays.asList(10, 1))));
     }
 
     @Test
     public void testAccumulateJustCollectionXOfMaybeOfTReducerOfR() {
-        Maybe<PersistentSetX<Integer>> maybes = Maybe.accumulateJust(ListX.of(just, none, Maybe.of(1)), Reducers.toPersistentSetX());
-        assertThat(maybes, equalTo(Maybe.of(PersistentSetX.of(10, 1))));
+        Maybe<PersistentSet<Integer>> maybes = Maybe.accumulateJust(Arrays.asList(just, none, Maybe.of(1)), Reducers.toPersistentSet());
+        assertThat(maybes, equalTo(Maybe.of(HashSet.of(10, 1))));
     }
 
     @Test
     public void testAccumulateJustCollectionXOfMaybeOfTFunctionOfQsuperTRSemigroupOfR() {
-        Maybe<String> maybes = Maybe.accumulateJust(ListX.of(just, none, Maybe.of(1)), i -> "" + i,
+        Maybe<String> maybes = Maybe.accumulateJust(Arrays.asList(just, none, Maybe.of(1)), i -> "" + i,
                 Monoids.stringConcat);
         assertThat(maybes, equalTo(Maybe.of("101")));
     }
 
     @Test
     public void testAccumulateJust() {
-        Maybe<Integer> maybes = Maybe.accumulateJust(Monoids.intSum,ListX.of(just, none, Maybe.of(1)));
+        Maybe<Integer> maybes = Maybe.accumulateJust(Monoids.intSum,Arrays.asList(just, none, Maybe.of(1)));
         assertThat(maybes, equalTo(Maybe.of(11)));
     }
 
@@ -379,14 +368,14 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
 
     @Test
     public void testWhenFunctionOfQsuperTQextendsRSupplierOfQextendsR() {
-        assertThat(just.visit(i -> i + 1, () -> 20), equalTo(11));
-        assertThat(none.visit(i -> i + 1, () -> 20), equalTo(20));
+        assertThat(just.fold(i -> i + 1, () -> 20), equalTo(11));
+        assertThat(none.fold(i -> i + 1, () -> 20), equalTo(20));
     }
 
     @Test
     public void testStream() {
-        assertThat(just.stream().toListX(), equalTo(ListX.of(10)));
-        assertThat(none.stream().toListX(), equalTo(ListX.of()));
+        assertThat(just.stream().toList(), equalTo(Arrays.asList(10)));
+        assertThat(none.stream().toList(), equalTo(Arrays.asList()));
     }
 
     @Test
@@ -396,16 +385,16 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
 
     @Test
     public void testConvertTo() {
-        Stream<Integer> toStream = just.visit(m -> Stream.of(m), () -> Stream.of());
-        assertThat(toStream.collect(Collectors.toList()), equalTo(ListX.of(10)));
+        Stream<Integer> toStream = just.fold(m -> Stream.of(m), () -> Stream.of());
+        assertThat(toStream.collect(Collectors.toList()), equalTo(Arrays.asList(10)));
     }
 
     @Test
     public void testConvertToAsync() {
         Future<Stream<Integer>> async = Future
-                .of(() -> just.visit(f -> Stream.of((int) f), () -> Stream.of()));
+                .of(() -> just.fold(f -> Stream.of((int) f), () -> Stream.of()));
 
-        assertThat(async.toOptional().get().collect(Collectors.toList()), equalTo(ListX.of(10)));
+        assertThat(async.toOptional().get().collect(Collectors.toList()), equalTo(Arrays.asList(10)));
     }
 
     @Test
@@ -540,10 +529,10 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
     @Test
     public void testWhenFunctionOfQsuperMaybeOfTQextendsR() {
 
-        String match = Maybe.just("data is present").visit(present -> "hello", () -> "missing");
+        String match = Maybe.just("data is present").fold(present -> "hello", () -> "missing");
 
-        assertThat(just.visit(s -> "hello", () -> "world"), equalTo("hello"));
-        assertThat(none.visit(s -> "hello", () -> "world"), equalTo("world"));
+        assertThat(just.fold(s -> "hello", () -> "world"), equalTo("hello"));
+        assertThat(none.fold(s -> "hello", () -> "world"), equalTo("world"));
     }
 
     @Test
@@ -616,10 +605,6 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
         return times == 0 ? Trampoline.done(sum) : Trampoline.more(() -> sum(times - 1, sum + times));
     }
 
-    @Test
-    public void testTrampoline() {
-        assertThat(just.trampoline(n -> sum(10, n)), equalTo(Maybe.of(65)));
-    }
 
     @Test
     public void testUnitT1() {
@@ -634,7 +619,7 @@ public class MaybeTest extends  AbstractValueTest implements Printable {
 
 	@Test
 	public void testFlatMapPublisher() {
-		Maybe<Integer> maybe = Maybe.of(100).flatMapP(i -> Flux.just(10, i));
+		Maybe<Integer> maybe = Maybe.of(100).mergeMap(i -> Flux.just(10, i));
 		assertThat(maybe.toOptional().get(), equalTo(10));
 	}
 

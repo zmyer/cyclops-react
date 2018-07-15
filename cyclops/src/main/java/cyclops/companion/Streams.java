@@ -6,22 +6,24 @@ import com.oath.cyclops.internal.stream.operators.MultiReduceOperator;
 import com.oath.cyclops.internal.stream.operators.OnePerOperator;
 import com.oath.cyclops.internal.stream.operators.RecoverOperator;
 import com.oath.cyclops.internal.stream.spliterators.*;
+import com.oath.cyclops.types.persistent.PersistentCollection;
+import com.oath.cyclops.types.stream.Connectable;
+import com.oath.cyclops.types.stream.NonPausableConnectable;
+import com.oath.cyclops.types.traversable.Traversable;
+import cyclops.control.Eval;
+import cyclops.control.Maybe;
+import cyclops.control.Option;
 import cyclops.data.Seq;
 import cyclops.control.Either;
 
+import cyclops.data.Vector;
 
-import cyclops.reactive.collections.immutable.VectorX;
 import cyclops.function.*;
 
 import cyclops.reactive.ReactiveSeq;
-import cyclops.reactive.Streamable;
 import com.oath.cyclops.util.box.Mutable;
-import com.oath.cyclops.data.collections.extensions.CollectionX;
-import cyclops.reactive.collections.mutable.ListX;
-import com.oath.cyclops.types.stream.HeadAndTail;
-import com.oath.cyclops.types.stream.HotStream;
-import com.oath.cyclops.types.stream.NonPausableHotStream;
-import com.oath.cyclops.types.stream.PausableHotStream;
+
+import com.oath.cyclops.types.stream.PausableConnectable;
 import com.oath.cyclops.util.ExceptionSoftener;
 
 import lombok.AllArgsConstructor;
@@ -96,6 +98,87 @@ public class Streams {
 
                 return ReactiveSeq.fromList(result);
             }
+        };
+
+        return ReactiveSeq.fromIterator(iter);
+    }
+    public static <T> ReactiveSeq<ReactiveSeq<T>> permutations(Object[] a){
+
+
+
+        final Iterator<ReactiveSeq<T>> iter = new Iterator<ReactiveSeq<T>>() {
+            private final int[] indices = IntStream.range(0, a.length).toArray();
+            private Option<ReactiveSeq<T>> next = Maybe.fromEval(Eval.later(this::first)).flatMap(i->i);
+
+            @Override
+            public boolean hasNext() {
+                return next.isPresent();
+            }
+
+            @Override
+            public ReactiveSeq<T> next() {
+                ReactiveSeq<T> res = next.orElse(null);
+                next = Maybe.fromEval(Eval.later(this::genNext)).flatMap(i->i);
+                return res;
+            }
+            private Option<ReactiveSeq<T>> first(){
+                return indices.length>0 ? Option.some(ReactiveSeq.fromList(buildList())) : Option.none();
+            }
+            private Option<ReactiveSeq<T>> genNext() {
+               return gen(findNextIndexByOrder());
+            }
+
+            private Option<ReactiveSeq<T>> gen(int next) {
+                return next<0 ? Option.none() : Option.some(ReactiveSeq.fromList(buildAndSwap(next)));
+
+            }
+            private void swapIndices(int i) {
+                swap(i++,findMinIndex(i-1));
+                for (int j = indices.length - 1 ;i < j;i++,j--) {
+                    swap(i,j);
+                }
+            }
+
+            private int findNextIndexByOrder(){
+                int i = indices.length - 2;
+                for (;i >= 0 && indices[i] > indices[i + 1];--i) {
+
+                }
+                return i;
+            }
+            private int findMinIndex(int startIdx){
+                int idx = startIdx + 1;
+                int currentMinValue = indices[idx];
+                int minIndex = idx;
+                for(;idx<indices.length;idx++){
+                    if (indices[startIdx] < indices[idx] && indices[idx] < currentMinValue) {
+                        currentMinValue = indices[idx];
+                        minIndex = idx;
+                    }
+
+                }
+                return minIndex;
+            }
+
+
+            private List<T> buildAndSwap(int next) {
+                swapIndices(next);
+                return buildList();
+            }
+            private List<T> buildList() {
+                final List<T> result = new ArrayList<>(indices.length);
+                for (int idx : indices) {
+                    result.add((T)a[idx]);
+                }
+                return result;
+            }
+
+            private  void swap(int a, int b) {
+                int temp = indices[a];
+                indices[a] = indices[b];
+                indices[b] = temp;
+            }
+
         };
 
         return ReactiveSeq.fromIterator(iter);
@@ -376,7 +459,7 @@ public class Streams {
      *
      * <pre>
      * {@code
-     *   Optional<ListX<Integer>> opt = Streams.streamToOptional(Stream.of(1,2,3));
+     *   Optional<Seq<Integer>> opt = Streams.streamToOptional(Stream.of(1,2,3));
      *
      *   //Optional[[1,2,3]]
      *
@@ -387,12 +470,12 @@ public class Streams {
      * @param stream To convert into an Optional
      * @return Optional with a List of values
      */
-    public final static <T> Optional<ListX<T>> streamToOptional(final Stream<T> stream) {
+    public final static <T> Optional<Seq<T>> streamToOptional(final Stream<T> stream) {
 
         final List<T> collected = stream.collect(java.util.stream.Collectors.toList());
         if (collected.size() == 0)
             return Optional.empty();
-        return Optional.of(ListX.fromIterable(collected));
+        return Optional.of(Seq.fromIterable(collected));
     }
 
     /**
@@ -424,7 +507,7 @@ public class Streams {
      * @return CompletableFuture with a List of values
      */
     public final static <T> CompletableFuture<List<T>> streamToCompletableFuture(final Stream<T> stream) {
-        return CompletableFuture.completedFuture(stream.collect(CyclopsCollectors.toListX()));
+        return CompletableFuture.completedFuture(stream.collect(Collectors.toList()));
 
     }
 
@@ -640,7 +723,7 @@ public class Streams {
      *
      * <pre>
      * {@code
-     * HotStream<Data> dataStream = Streams.schedule(Stream.generate(()->"next job:"+formatDate(new Date()))
+     * Connectable<Data> dataStream = Streams.schedule(Stream.generate(()->"next job:"+formatDate(new Date()))
      *            							  .map(this::processJob)
      *            							  ,"0 20 * * *",Executors.newScheduledThreadPool(1)));
      *
@@ -653,10 +736,10 @@ public class Streams {
      * @param stream the stream to schedule element processing on
      * @param cron Expression that determines when each job will run
      * @param ex ScheduledExecutorService
-     * @return Connectable HotStream of emitted from scheduled Stream
+     * @return Connectable Connectable of emitted from scheduled Stream
      */
-    public static <T> HotStream<T> schedule(final Stream<T> stream, final String cron, final ScheduledExecutorService ex) {
-        return new NonPausableHotStream<>(
+    public static <T> Connectable<T> schedule(final Stream<T> stream, final String cron, final ScheduledExecutorService ex) {
+        return new NonPausableConnectable<>(
                                           stream).schedule(cron, ex);
     }
 
@@ -676,7 +759,7 @@ public class Streams {
      *
      * <pre>
      * {@code
-     * HotStream<Data> dataStream = Streams.scheduleFixedDelay(Stream.generate(()->"next job:"+formatDate(new Date()))
+     * Connectable<Data> dataStream = Streams.scheduleFixedDelay(Stream.generate(()->"next job:"+formatDate(new Date()))
      *            							  .map(this::processJob)
      *            							  ,60_000,Executors.newScheduledThreadPool(1)));
      *
@@ -689,10 +772,10 @@ public class Streams {
      * @param stream the stream to schedule element processing on
      * @param delay Between last element completes passing through the Stream until the next one starts
      * @param ex ScheduledExecutorService
-     * @return Connectable HotStream of emitted from scheduled Stream
+     * @return Connectable Connectable of emitted from scheduled Stream
      */
-    public static <T> HotStream<T> scheduleFixedDelay(final Stream<T> stream, final long delay, final ScheduledExecutorService ex) {
-        return new NonPausableHotStream<>(
+    public static <T> Connectable<T> scheduleFixedDelay(final Stream<T> stream, final long delay, final ScheduledExecutorService ex) {
+        return new NonPausableConnectable<>(
                                           stream).scheduleFixedDelay(delay, ex);
     }
 
@@ -712,7 +795,7 @@ public class Streams {
      *
      * <pre>
      * {@code
-     * HotStream<Data> dataStream = Streams.scheduleFixedRate(Stream.generate(()->"next job:"+formatDate(new Date()))
+     * Connectable<Data> dataStream = Streams.scheduleFixedRate(Stream.generate(()->"next job:"+formatDate(new Date()))
      *            							  .map(this::processJob)
      *            							  ,60_000,Executors.newScheduledThreadPool(1)));
      *
@@ -723,10 +806,10 @@ public class Streams {
      * @param stream the stream to schedule element processing on
      * @param rate Time in millis between job runs
      * @param ex ScheduledExecutorService
-     * @return Connectable HotStream of emitted from scheduled Stream
+     * @return Connectable Connectable of emitted from scheduled Stream
      */
-    public static <T> HotStream<T> scheduleFixedRate(final Stream<T> stream, final long rate, final ScheduledExecutorService ex) {
-        return new NonPausableHotStream<>(
+    public static <T> Connectable<T> scheduleFixedRate(final Stream<T> stream, final long rate, final ScheduledExecutorService ex) {
+        return new NonPausableConnectable<>(
                                           stream).scheduleFixedRate(rate, ex);
     }
 
@@ -743,7 +826,7 @@ public class Streams {
      */
     public final static <T> Tuple2<Stream<T>, Stream<T>> splitAt(final Stream<T> stream, final int where) {
         final Tuple2<Stream<T>, Stream<T>> Tuple2 = duplicate(stream);
-        return new Tuple2(
+        return Tuple.tuple(
                           Tuple2._1().limit(where), Tuple2._2().skip(where));
     }
 
@@ -759,7 +842,7 @@ public class Streams {
      */
     public final static <T> Tuple2<Stream<T>, Stream<T>> splitBy(final Stream<T> stream, final Predicate<T> splitter) {
         final Tuple2<Stream<T>, Stream<T>> Tuple2 = duplicate(stream);
-        return new Tuple2(
+        return Tuple.tuple(
                           limitWhile(Tuple2._1(), splitter), skipWhile(Tuple2._2(), splitter));
     }
 
@@ -776,7 +859,7 @@ public class Streams {
      */
     public final static <T> Tuple2<Stream<T>, Stream<T>> partition(final Stream<T> stream, final Predicate<? super T> splitter) {
         final Tuple2<Stream<T>, Stream<T>> Tuple2 = duplicate(stream);
-        return new Tuple2(
+        return Tuple.tuple(
                           Tuple2._1().filter(splitter), Tuple2._2().filter(splitter.negate()));
     }
 
@@ -797,7 +880,7 @@ public class Streams {
     public final static <T> Tuple2<Stream<T>, Stream<T>> duplicate(final Stream<T> stream) {
 
         final Tuple2<Iterator<T>, Iterator<T>> Tuple2 = Streams.toBufferingDuplicator(stream.iterator());
-        return new Tuple2(
+        return Tuple.tuple(
                           Streams.stream(Tuple2._1()), Streams.stream(Tuple2._2()));
     }
     /**
@@ -817,14 +900,14 @@ public class Streams {
     public final static <T> Tuple2<Stream<T>, Stream<T>> duplicate(final Stream<T> stream,Supplier<Deque<T>> bufferFactory) {
 
         final Tuple2<Iterator<T>, Iterator<T>> Tuple2 = Streams.toBufferingDuplicator(stream.iterator(),bufferFactory);
-        return new Tuple2(
+        return Tuple.tuple(
                 Streams.stream(Tuple2._1()), Streams.stream(Tuple2._2()));
     }
 
     private final static <T> Tuple2<Stream<T>, Stream<T>> duplicatePos(final Stream<T> stream, final int pos) {
 
         final Tuple2<Iterator<T>, Iterator<T>> Tuple2 = Streams.toBufferingDuplicator(stream.iterator(), pos);
-        return new Tuple2(
+        return Tuple.tuple(
                           Streams.stream(Tuple2._1()), Streams.stream(Tuple2._2()));
     }
 
@@ -1041,7 +1124,7 @@ public class Streams {
      * Insert a Stream into the middle of this stream at the specified position
      * <pre>
      * {@code
-     * List<String> result = 	Streams.insertAtS(Stream.of(1,2,3),1,of(100,200,300))
+     * List<String> result = 	Streams.insertAt(Stream.of(1,2,3),1,of(100,200,300))
     										.map(it ->it+"!!")
     										.collect(CyclopsCollectors.toList());
 
@@ -1059,52 +1142,7 @@ public class Streams {
         return appendStream(appendStream(Tuple2._1().limit(pos), insert), Tuple2._2().skip(pos));
     }
 
-    /**
-     * Convert to a Stream with the result of a reduction operation repeated
-     * specified times
-     *
-     * <pre>
-     * {@code
-     *   		List<Integer> list = Streams.cycle(Stream.of(1,2,2),Reducers.toCountInt(),3)
-     * 										.
-     * 										.collect(CyclopsCollectors.toList());
-     * 	//is asList(3,3,3);
-     *   }
-     * </pre>
-     *
-     * @param m
-     *            Monoid to be used in reduction
-     * @param times
-     *            Number of times value should be repeated
-     * @return Stream with reduced values repeated
-     */
-    public final static <T> Stream<T> cycle(final Stream<T> stream, final Monoid<T> m, final int times) {
-        return Streams.cycle(times, Streamable.fromObject(m.foldLeft(stream)));
 
-    }
-
-    /**
-     * extract head and tail together
-     *
-     * <pre>
-     * {@code
-     *  Stream<String> helloWorld = Stream.of("hello","world","last");
-    	HeadAndTail<String> headAndTail = Streams.headAndTail(helloWorld);
-    	 String head = headAndTail.head();
-    	 assertThat(head,equalTo("hello"));
-
-    	ReactiveSeq<String> tail =  headAndTail.tail();
-    	assertThat(tail.headAndTail().head(),equalTo("world"));
-     * }
-     * </pre>
-     *
-     * @return
-     */
-    public final static <T> HeadAndTail<T> headAndTail(final Stream<T> stream) {
-        final Iterator<T> it = stream.iterator();
-        return new HeadAndTail<>(
-                                 it);
-    }
 
     /**
      * skip elements in Stream until Predicate holds true
@@ -1466,8 +1504,8 @@ public class Streams {
      * @return Reduced Stream values as List entries
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public static <R> ListX<R> reduce(final Stream<R> stream, final Iterable<? extends Monoid<R>> reducers) {
-        return ListX.fromIterable(new MultiReduceOperator<R>(
+    public static <R> Seq<R> reduce(final Stream<R> stream, final Iterable<? extends Monoid<R>> reducers) {
+        return Seq.fromIterable(new MultiReduceOperator<R>(
                                                              stream).reduce(reducers));
 
     }
@@ -1489,8 +1527,8 @@ public class Streams {
      * @return Reduced Stream values as List entries
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    public static <R> ListX<R> reduce(final Stream<R> stream, final Stream<? extends Monoid<R>> reducers) {
-        return reduce(stream, ListX.fromIterable((List) reducers.collect(java.util.stream.Collectors.toList())));
+    public static <R> Seq<R> reduce(final Stream<R> stream, final Stream<? extends Monoid<R>> reducers) {
+        return reduce(stream, Seq.fromIterable((List) reducers.collect(java.util.stream.Collectors.toList())));
 
     }
 
@@ -1635,7 +1673,7 @@ public class Streams {
      *            Size of sliding window
      * @return Stream with sliding view
      */
-    public final static <T> Stream<VectorX<T>> sliding(final Stream<T> stream, final int windowSize, final int increment) {
+    public final static <T> Stream<Seq<T>> sliding(final Stream<T> stream, final int windowSize, final int increment) {
         return StreamSupport.stream(new SlidingSpliterator<>(stream.spliterator(),Function.identity(),
                 windowSize,increment),stream.isParallel());
     }
@@ -1704,7 +1742,7 @@ public class Streams {
      * @param windowSize size of window
      * @return
      */
-    public final static <T> Stream<VectorX<T>> sliding(final Stream<T> stream, final int windowSize) {
+    public final static <T> Stream<Seq<T>> sliding(final Stream<T> stream, final int windowSize) {
         return sliding(stream, windowSize, 1);
     }
 
@@ -1728,9 +1766,9 @@ public class Streams {
      *            Size of each Group
      * @return Stream with elements grouped by size
      */
-    public final static <T> Stream<ListX<T>> grouped(final Stream<T> stream, final int groupSize) {
-        return StreamSupport.stream(new GroupingSpliterator<>(stream.spliterator(),()->new ArrayList<>(groupSize),
-                c->ListX.fromIterable(c),groupSize),stream.isParallel());
+    public final static <T> Stream<Vector<T>> grouped(final Stream<T> stream, final int groupSize) {
+        return StreamSupport.stream(new GroupingSpliterator<>(stream.spliterator(),()->Vector.empty(),
+                c->Vector.fromIterable(c),groupSize),stream.isParallel());
 
 
     }
@@ -1756,7 +1794,7 @@ public class Streams {
      * @param factory Supplier for creating Collections for holding grouping
      * @return  Stream with elements grouped by size
      */
-    public final static <T, C extends Collection<? super T>> Stream<C> grouped(final Stream<T> stream, final int groupSize,
+    public final static <T, C extends PersistentCollection<? super T>> Stream<C> grouped(final Stream<T> stream, final int groupSize,
             final Supplier<C> factory) {
         return StreamSupport.stream(new GroupingSpliterator<>(stream.spliterator(),factory,
                 Function.identity(),groupSize),stream.isParallel());
@@ -1774,9 +1812,6 @@ public class Streams {
         return Streamable.fromStream(stream);
     }
 
-    public final static <T> Streamable<T> toConcurrentLazyStreamable(final Stream<T> stream) {
-        return Streamable.synchronizedFromStream(stream);
-    }
 
     public final static <U, T> Stream<U> scanRight(final Stream<T> stream, final U identity,
             final BiFunction<? super T, ? super U, ? extends U> combiner) {
@@ -1895,25 +1930,25 @@ public class Streams {
     }
 
     /**
-     * Attempt to transform this Monad to the same type as the supplied Monoid (using mapToType on the monoid interface)
+     * Attempt to transform this Stream to the same type as the supplied Monoid (using mapToType on the monoid interface)
      * Then use Monoid to reduce values
      *
      * @param reducer Monoid to reduce values
      * @return Reduce result
      */
-    public final static <T, R> R mapReduce(final Stream<T> stream, final Reducer<R,T> reducer) {
-        return reducer.mapReduce(stream);
+    public final static <T, R> R foldMap(final Stream<T> stream, final Reducer<R,T> reducer) {
+        return reducer.foldMap(stream);
     }
 
     /**
-     *  Attempt to transform this Monad to the same type as the supplied Monoid, using supplied function
+     *  Attempt to transform this Stream to the same type as the supplied Monoid, using supplied function
      *  Then use Monoid to reduce values
      *
      * @param mapper Function to transform Monad type
      * @param reducer Monoid to reduce values
      * @return Reduce result
      */
-    public final static <T, R> R mapReduce(final Stream<T> stream, final Function<? super T, ? extends R> mapper, final Monoid<R> reducer) {
+    public final static <T, R> R foldMap(final Stream<T> stream, final Function<? super T, ? extends R> mapper, final Monoid<R> reducer) {
         return reducer.foldLeft(stream.map(mapper));
     }
 
@@ -1935,7 +1970,7 @@ public class Streams {
      * @return Reduce result
      */
     public final static <R,T> R foldLeftMapToType(final Stream<T> stream, final Reducer<R,T> reducer) {
-        return reducer.mapReduce(stream);
+        return reducer.foldMap(stream);
     }
 
     /**
@@ -1956,7 +1991,7 @@ public class Streams {
      * @return Reduce result
      */
     public final static <R,T> R foldRightMapToType(final Stream<T> stream, final Reducer<R,T> reducer) {
-        return reducer.mapReduce(Streams.reverse(stream));
+        return reducer.foldMap(Streams.reverse(stream));
     }
 
     /**
@@ -2046,7 +2081,7 @@ public class Streams {
         return true;
 
     }
-    public static <T> ReactiveSeq<T> oneShotStreamI(final Iterable<T> iterable) {
+    public static <T> ReactiveSeq<T> oneShotStream(final Iterable<T> iterable) {
         Objects.requireNonNull(iterable);
         return new OneShotStreamX<T>(new IteratableSpliterator<T>(iterable), Optional.empty());
 
@@ -2331,7 +2366,7 @@ public class Streams {
     public static final <A> Tuple2<Iterator<A>, Iterator<A>> toBufferingDuplicator(final Iterator<A> iterator, final long pos) {
         final LinkedList<A> bufferTo = new LinkedList<A>();
         final LinkedList<A> bufferFrom = new LinkedList<A>();
-        return new Tuple2(
+        return Tuple.tuple(
                           new DuplicatingIterator(
                                                   bufferTo, bufferFrom, iterator, Long.MAX_VALUE, 0),
                           new DuplicatingIterator(
@@ -2344,7 +2379,7 @@ public class Streams {
     public static final <A> Tuple2<Iterator<A>, Iterator<A>> toBufferingDuplicator(final Iterator<A> iterator, final long pos,Supplier<Deque<A>> bufferFactory) {
         final Deque<A> bufferTo = bufferFactory.get();
         final Deque<A> bufferFrom = bufferFactory.get();
-        return new Tuple2(
+        return Tuple.tuple(
                 new DuplicatingIterator(
                         bufferTo, bufferFrom, iterator, Long.MAX_VALUE, 0),
                 new DuplicatingIterator(
@@ -2352,20 +2387,21 @@ public class Streams {
     }
 
 
-    public static final <A> ListX<Iterable<A>> toBufferingCopier(final Iterable<A> it, final int copies) {
+    public static final <A> Seq<Iterable<A>> toBufferingCopier(final Iterable<A> it, final int copies) {
 
-        return  ListX.range(0,copies)
+        return  Seq.range(0,copies)
                 .zipWithIndex()
-                .map(t->()-> toBufferingCopier(it.iterator(),copies).get(t._2().intValue()));
+                .map(t->()-> toBufferingCopier(it.iterator(),copies).getOrElseGet(t._2().intValue(),()->Arrays.<A>asList().iterator()));
     }
-    public static final <A> ListX<Iterable<A>> toBufferingCopier(final Iterable<A> it, final int copies,Supplier<Deque<A>> bufferSupplier) {
+    public static final <A> Seq<Iterable<A>> toBufferingCopier(final Iterable<A> it, final int copies,Supplier<Deque<A>> bufferSupplier) {
 
-        return  ListX.range(0,copies)
+        return  Seq.range(0,copies)
                 .zipWithIndex()
-                .map(t->() ->  toBufferingCopier(it.iterator(),copies,bufferSupplier).get(t._2().intValue()));
+                .map(t->() ->  toBufferingCopier(it.iterator(),copies,bufferSupplier).getOrElseGet(t._2().intValue(),
+                        ()->Arrays.<A>asList().iterator()));
     }
 
-    public static final <A> ListX<Iterator<A>> toBufferingCopier(final Iterator<A> iterator, final int copies) {
+    public static final <A> Seq<Iterator<A>> toBufferingCopier(final Iterator<A> iterator, final int copies) {
         final List<Iterator<A>> result = new ArrayList<>();
 
         ArrayList<Deque<A>> localBuffers = new ArrayList<>(copies);
@@ -2377,9 +2413,9 @@ public class Streams {
         }
 
 
-        return ListX.fromIterable(result);
+        return Seq.fromIterable(result);
     }
-    public static final <A> ListX<Iterator<A>> toBufferingCopier(final Iterator<A> iterator, final int copies, Supplier<Deque<A>> bufferSupplier) {
+    public static final <A> Seq<Iterator<A>> toBufferingCopier(final Iterator<A> iterator, final int copies, Supplier<Deque<A>> bufferSupplier) {
         final List<Iterator<A>> result = new ArrayList<>();
 
         ArrayList<Deque<A>> localBuffers = new ArrayList<>(copies);
@@ -2391,7 +2427,7 @@ public class Streams {
         }
 
 
-        return ListX.fromIterable(result);
+        return Seq.fromIterable(result);
     }
 
     @AllArgsConstructor
@@ -2478,11 +2514,11 @@ public class Streams {
       *
       * @return An immutable toX of this stream.
       */
-    public static final <A> CollectionX<A> toLazyCollection(final Stream<A> stream) {
+    public static final <A> Collection<A> toLazyCollection(final Stream<A> stream) {
         return SeqUtils.toLazyCollection(stream.iterator());
     }
 
-    public static final <A> CollectionX<A> toLazyCollection(final Iterator<A> iterator) {
+    public static final <A> Collection<A> toLazyCollection(final Iterator<A> iterator) {
         return SeqUtils.toLazyCollection(iterator);
     }
 
@@ -2492,11 +2528,11 @@ public class Streams {
     * @param stream
     * @return
     */
-    public static final <A> CollectionX<A> toConcurrentLazyCollection(final Stream<A> stream) {
+    public static final <A> Collection<A> toConcurrentLazyCollection(final Stream<A> stream) {
         return SeqUtils.toConcurrentLazyCollection(stream.iterator());
     }
 
-    public static final <A> CollectionX<A> toConcurrentLazyCollection(final Iterator<A> iterator) {
+    public static final <A> Collection<A> toConcurrentLazyCollection(final Iterator<A> iterator) {
         return SeqUtils.toConcurrentLazyCollection(iterator);
     }
 
@@ -2529,12 +2565,12 @@ public class Streams {
         });
     }
 
-    public final static <T> Stream<ListX<T>> groupedByTime(final Stream<T> stream, final long time, final TimeUnit t) {
-        return StreamSupport.stream(new GroupedByTimeSpliterator(stream.spliterator(),()->ListX.fromIterable(new ArrayList<>()),
+    public final static <T> Stream<Seq<T>> groupedByTime(final Stream<T> stream, final long time, final TimeUnit t) {
+        return StreamSupport.stream(new GroupedByTimeSpliterator(stream.spliterator(),()->Seq.fromIterable(new ArrayList<>()),
                 Function.identity(),time,t),stream.isParallel());
     }
     @Deprecated
-    public final static <T> Stream<ListX<T>> batchByTime(final Stream<T> stream, final long time, final TimeUnit t) {
+    public final static <T> Stream<Seq<T>> batchByTime(final Stream<T> stream, final long time, final TimeUnit t) {
         return groupedByTime(stream,time,t);
     }
     public final static <T, C extends Collection<? super T>> Stream<C> groupedByTime(final Stream<T> stream, final long time, final TimeUnit t,
@@ -2554,15 +2590,15 @@ public class Streams {
     /**
      * Group data in a Stream using knowledge of the current batch and the next entry to determing grouping limits
      *
-     * @see ReactiveSeq#groupedStatefullyUntil(BiPredicate)
+     * @see Traversable#groupedUntil(BiPredicate)
      *
      * @param stream Stream to group
      * @param predicate Predicate to determine grouping
      * @return Stream grouped into Lists determined by predicate
      */
-    public final static <T> Stream<ListX<T>> groupedStatefullyUntil(final Stream<T> stream,
-            final BiPredicate<ListX<? super T>, ? super T> predicate) {
-        return StreamSupport.stream(new GroupedStatefullySpliterator<>(stream.spliterator(),()->ListX.of(),Function.identity(),predicate.negate()),stream.isParallel());
+    public final static <T> Stream<Seq<T>> groupedStatefullyUntil(final Stream<T> stream,
+            final BiPredicate<Seq<? super T>, ? super T> predicate) {
+        return StreamSupport.stream(new GroupedStatefullySpliterator<>(stream.spliterator(),()->Seq.of(),Function.identity(),predicate.negate()),stream.isParallel());
     }
 
     /**
@@ -2574,12 +2610,12 @@ public class Streams {
      * @param predicate Predicate to determine grouping
      * @return Stream grouped into Lists determined by predicate
      */
-    public final static <T> Stream<ListX<T>> groupedWhile(final Stream<T> stream, final Predicate<? super T> predicate) {
-        return StreamSupport.stream(new GroupedWhileSpliterator<>(stream.spliterator(),()->ListX.of(),Function.identity(),predicate.negate()),stream.isParallel());
+    public final static <T> Stream<Seq<T>> groupedWhile(final Stream<T> stream, final Predicate<? super T> predicate) {
+        return StreamSupport.stream(new GroupedWhileSpliterator<>(stream.spliterator(),()->Seq.of(),Function.identity(),predicate.negate()),stream.isParallel());
 
     }
     @Deprecated
-    public final static <T> Stream<ListX<T>> batchWhile(final Stream<T> stream, final Predicate<? super T> predicate) {
+    public final static <T> Stream<Seq<T>> batchWhile(final Stream<T> stream, final Predicate<? super T> predicate) {
         return groupedWhile(stream,predicate);
     }
     /**
@@ -2592,13 +2628,13 @@ public class Streams {
      * @param factory Supplier to create toX for groupings
      * @return Stream grouped into Collections determined by predicate
      */
-    public final static <T, C extends Collection<? super T>> Stream<C> groupedWhile(final Stream<T> stream, final Predicate<? super T> predicate,
-            final Supplier<C> factory) {
+    public final static <T, C extends PersistentCollection<? super T>> Stream<C> groupedWhile(final Stream<T> stream, final Predicate<? super T> predicate,
+                                                                                                         final Supplier<C> factory) {
         return StreamSupport.stream(new GroupedWhileSpliterator<>(stream.spliterator(),factory,Function.identity(),predicate.negate()),stream.isParallel());
 
     }
     @Deprecated
-    public final static <T, C extends Collection<? super T>> Stream<C> batchWhile(final Stream<T> stream, final Predicate<? super T> predicate,
+    public final static <T, C extends PersistentCollection<? super T>> Stream<C> batchWhile(final Stream<T> stream, final Predicate<? super T> predicate,
             final Supplier<C> factory) {
         return groupedWhile(stream,predicate,factory);
     }
@@ -2611,11 +2647,11 @@ public class Streams {
      * @param predicate Predicate to determine grouping
      * @return Stream grouped into Lists determined by predicate
      */
-    public final static <T> Stream<ListX<T>> groupedUntil(final Stream<T> stream, final Predicate<? super T> predicate) {
+    public final static <T> Stream<Seq<T>> groupedUntil(final Stream<T> stream, final Predicate<? super T> predicate) {
         return groupedWhile(stream, predicate.negate());
     }
     @Deprecated
-    public final static <T> Stream<ListX<T>> batchUntil(final Stream<T> stream, final Predicate<? super T> predicate) {
+    public final static <T> Stream<Seq<T>> batchUntil(final Stream<T> stream, final Predicate<? super T> predicate) {
         return groupedUntil(stream, predicate);
     }
     /**
@@ -2629,8 +2665,8 @@ public class Streams {
      * @param t Time unit for max group time
      * @return Stream grouped by time and size
      */
-    public final static <T> Stream<ListX<T>> groupedBySizeAndTime(final Stream<T> stream, final int size, final long time, final TimeUnit t) {
-        return StreamSupport.stream(new GroupedByTimeAndSizeSpliterator(stream.spliterator(),()->ListX.fromIterable(new ArrayList<>(size)),
+    public final static <T> Stream<Seq<T>> groupedBySizeAndTime(final Stream<T> stream, final int size, final long time, final TimeUnit t) {
+        return StreamSupport.stream(new GroupedByTimeAndSizeSpliterator(stream.spliterator(),()->Seq.fromIterable(new ArrayList<>(size)),
                 Function.identity(),size,time,t),stream.isParallel());
     }
 
@@ -2779,29 +2815,29 @@ public class Streams {
         });
     }
 
-    public final static <T> HotStream<T> hotStream(final Stream<T> stream, final Executor exec) {
-        return new NonPausableHotStream<>(
+    public final static <T> Connectable<T> hotStream(final Stream<T> stream, final Executor exec) {
+        return new NonPausableConnectable<>(
                                           stream).init(exec);
     }
 
-    public final static <T> HotStream<T> primedHotStream(final Stream<T> stream, final Executor exec) {
-        return new NonPausableHotStream<>(
+    public final static <T> Connectable<T> primedHotStream(final Stream<T> stream, final Executor exec) {
+        return new NonPausableConnectable<>(
                                           stream).paused(exec);
     }
 
-    public final static <T> PausableHotStream<T> pausableHotStream(final Stream<T> stream, final Executor exec) {
-        return new PausableHotStreamImpl<>(
+    public final static <T> PausableConnectable<T> pausableHotStream(final Stream<T> stream, final Executor exec) {
+        return new PausableConnectableImpl<>(
                                            stream).init(exec);
     }
 
-    public final static <T> PausableHotStream<T> primedPausableHotStream(final Stream<T> stream, final Executor exec) {
-        return new PausableHotStreamImpl<>(
+    public final static <T> PausableConnectable<T> primedPausableHotStream(final Stream<T> stream, final Executor exec) {
+        return new PausableConnectableImpl<>(
                                            stream).paused(exec);
     }
 
 
 
     public static  <T,R> Stream<R> tailRec(T initial, Function<? super T, ? extends Stream<? extends Either<T, R>>> fn) {
-        return ListX.tailRec(initial,fn.andThen(ReactiveSeq::fromStream)).stream();
+        return ReactiveSeq.tailRec(initial,fn.andThen(ReactiveSeq::fromStream)).stream();
     }
 }

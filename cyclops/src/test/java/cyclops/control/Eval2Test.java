@@ -1,13 +1,14 @@
 package cyclops.control;
 
-import cyclops.reactive.collections.immutable.PersistentSetX;
+import com.oath.cyclops.types.persistent.PersistentSet;
+import cyclops.data.HashSet;
 import cyclops.companion.Monoids;
 import cyclops.companion.Reducers;
 import cyclops.companion.Semigroups;
 import cyclops.companion.Streams;
 import cyclops.control.Eval.Module.Later;
 import com.oath.cyclops.util.box.Mutable;
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.function.Monoid;
 import cyclops.reactive.ReactiveSeq;
 import org.junit.Before;
@@ -45,17 +46,7 @@ public class Eval2Test {
 	    assertFalse(Eval.always(()->10).equals(Eval.later(()->null)));
 	    assertFalse(Eval.always(()->null).equals(Eval.later(()->10)));
 	}
-	@Test
-    public void nest(){
-       assertThat(just.nest().map(m->m.toOptional().get()),equalTo(just));
 
-    }
-    @Test
-    public void coFlatMap(){
-        assertThat(just.coflatMap(m-> m.isPresent()? m.toOptional().get() : 50),equalTo(just));
-        assertThat(none.coflatMap(m-> m.isPresent()? m.toOptional().get() : 50),equalTo(Eval.now(50)));
-
-    }
     @Test
     public void combine(){
 
@@ -113,8 +104,8 @@ public class Eval2Test {
 
 	@Test
 	public void testSequence() {
-		Eval<ReactiveSeq<Integer>> maybes =Eval.sequence(ListX.of(just,Eval.now(1)));
-		assertThat(maybes.map(s->s.toList()),equalTo(Eval.now(ListX.of(10,1))));
+		Eval<ReactiveSeq<Integer>> maybes =Eval.sequence(Arrays.asList(just,Eval.now(1)));
+		assertThat(maybes.map(s->s.toList()),equalTo(Eval.now(Arrays.asList(10,1))));
 	}
 
 
@@ -122,18 +113,18 @@ public class Eval2Test {
 	public void testAccumulateJustCollectionXOfMaybeOfTReducerOfR() {
 
 
-		Eval<PersistentSetX<Integer>> maybes =Eval.accumulate(ListX.of(just,Eval.now(1)),Reducers.toPersistentSetX());
-		assertThat(maybes,equalTo(Eval.now(PersistentSetX.of(10,1))));
+		Eval<PersistentSet<Integer>> maybes =Eval.accumulate(Arrays.asList(just,Eval.now(1)),Reducers.toPersistentSet());
+		assertThat(maybes,equalTo(Eval.now(HashSet.of(10,1))));
 	}
 
 	@Test
 	public void testAccumulateJustCollectionXOfMaybeOfTFunctionOfQsuperTRSemigroupOfR() {
-		Eval<String> maybes =Eval.accumulate(ListX.of(just,Eval.later(()->1)),i->""+i, Monoids.stringConcat);
+		Eval<String> maybes =Eval.accumulate(Arrays.asList(just,Eval.later(()->1)),i->""+i, Monoids.stringConcat);
 		assertThat(maybes,equalTo(Eval.now("101")));
 	}
 	@Test
 	public void testAccumulateJust() {
-		Eval<Integer> maybes =Eval.accumulate(Monoids.intSum,ListX.of(just,Eval.now(1)));
+		Eval<Integer> maybes =Eval.accumulate(Monoids.intSum,Arrays.asList(just,Eval.now(1)));
 		assertThat(maybes,equalTo(Eval.now(11)));
 	}
 
@@ -176,15 +167,15 @@ public class Eval2Test {
 
 	@Test
 	public void testWhenFunctionOfQsuperTQextendsRSupplierOfQextendsR() {
-		assertThat(just.visit(i->i+1,()->20),equalTo(11));
-		assertThat(none.visit(i->i+1,()->20),equalTo(20));
+		assertThat(just.fold(i->i+1,()->20),equalTo(11));
+		assertThat(none.fold(i->i+1,()->20),equalTo(20));
 	}
 
 
 	@Test
 	public void testStream() {
-		assertThat(just.stream().toListX(),equalTo(ListX.of(10)));
-		assertThat(none.stream().filter(i->i!=null).toListX(),equalTo(ListX.of()));
+		assertThat(just.stream().toList(),equalTo(Arrays.asList(10)));
+		assertThat(none.stream().filter(i->i!=null).toList(),equalTo(Arrays.asList()));
 	}
 
 	@Test
@@ -194,15 +185,15 @@ public class Eval2Test {
 
 
     public void testConvertTo() {
-        Stream<Integer> toStream = just.visit(m->Stream.of(m),()->Stream.of());
-        assertThat(toStream.collect(Collectors.toList()),equalTo(ListX.of(10)));
+        Stream<Integer> toStream = just.fold(m->Stream.of(m),()->Stream.of());
+        assertThat(toStream.collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
     @Test
     public void testConvertToAsync() {
-        Future<Stream<Integer>> async = Future.of(()->just.visit(f->Stream.of((int)f),()->Stream.of()));
+        Future<Stream<Integer>> async = Future.of(()->just.fold(f->Stream.of((int)f),()->Stream.of()));
 
-        assertThat(async.toOptional().get().collect(Collectors.toList()),equalTo(ListX.of(10)));
+        assertThat(async.toOptional().get().collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
 
@@ -380,8 +371,8 @@ public class Eval2Test {
 
 	@Test
 	public void testWhenFunctionOfQsuperMaybeOfTQextendsR() {
-		assertThat(just.visit(s->"hello", ()->"world"),equalTo("hello"));
-		assertThat(none.visit(s->"hello", ()->"world"),equalTo("world"));
+		assertThat(just.fold(s->"hello", ()->"world"),equalTo("hello"));
+		assertThat(none.fold(s->"hello", ()->"world"),equalTo("world"));
 	}
 
 
@@ -460,10 +451,7 @@ public class Eval2Test {
 	private Trampoline<Integer> sum(int times, int sum){
 		return times ==0 ?  Trampoline.done(sum) : Trampoline.more(()->sum(times-1,sum+times));
 	}
-	@Test
-	public void testTrampoline() {
-		assertThat(just.trampoline(n ->sum(10,n)),equalTo(Eval.now(65)));
-	}
+
 
 
 

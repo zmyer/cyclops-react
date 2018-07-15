@@ -5,9 +5,9 @@ import com.oath.cyclops.internal.stream.spliterators.ReversableSpliterator;
 import cyclops.control.Option;
 import cyclops.data.tuple.Tuple;
 import cyclops.companion.Streams;
-import cyclops.reactive.collections.mutable.ListX;
+import cyclops.data.Seq;
 import cyclops.reactive.ReactiveSeq;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 import cyclops.data.tuple.Tuple2;
 import cyclops.data.tuple.Tuple3;
 import cyclops.data.tuple.Tuple4;
@@ -104,25 +104,25 @@ public class OneShotStreamX<T> extends SpliteratorBasedStream<T> {
                 .map4(s -> createSeq(s, reversible.map(r -> r.copy())));
     }
     @Override
-    public ListX<ReactiveSeq<T>> multicast(int num){
+    public Seq<ReactiveSeq<T>> multicast(int num){
         return Streams.toBufferingCopier(iterator(),num,()->new ArrayDeque<T>(100))
                 .map(ReactiveSeq::fromIterator);
     }
     @Override
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public final Tuple2<Option<T>, ReactiveSeq<T>> splitAtHead() {
-        final Tuple2<ReactiveSeq<T>, ReactiveSeq<T>> Tuple2 = splitAt(1);
-        return Tuple2.of(
-                Tuple2._1().to().option()
-                        .flatMap(l -> l.size() > 0 ? Option.some(l.get(0)) : Option.none()),
-                Tuple2._2());
+        final Tuple2<ReactiveSeq<T>, ReactiveSeq<T>> t2 = splitAt(1);
+         return Tuple2.of(
+            Option.fromIterable( t2._1().toList())
+                        ,
+                     t2._2());
     }
 
     @Override
     public final Tuple2<ReactiveSeq<T>, ReactiveSeq<T>> splitAt(final int where) {
         return Streams.splitAt(this, where)
-                .map1(s -> createSeq(s, reversible.map(r -> r.copy())))
-                .map2(s -> createSeq(s, reversible.map(r -> r.copy())));
+                .bimap(s1 -> createSeq(s1, reversible.map(r -> r.copy())),
+                    s2 -> createSeq(s2, reversible.map(r -> r.copy())));
 
     }
 
@@ -182,8 +182,8 @@ public class OneShotStreamX<T> extends SpliteratorBasedStream<T> {
         return stream;
     }
 
-    public <R> R visit(Function<? super ReactiveSeq<T>,? extends R> sync, Function<? super ReactiveSeq<T>,? extends R> reactiveStreams,
-                       Function<? super ReactiveSeq<T>,? extends R> asyncNoBackPressure){
+    public <R> R fold(Function<? super ReactiveSeq<T>,? extends R> sync, Function<? super ReactiveSeq<T>,? extends R> reactiveStreams,
+                      Function<? super ReactiveSeq<T>,? extends R> asyncNoBackPressure){
         return sync.apply(this);
     }
 

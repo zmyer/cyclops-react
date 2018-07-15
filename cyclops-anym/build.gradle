@@ -31,6 +31,7 @@ configurations {
 dependencies {
   compile project(':cyclops')
   compile project(':cyclops-futurestream')
+    compile project(':cyclops-reactive-collections')
   compile project(':cyclops-pure')
   provided 'org.projectlombok:lombok:1.16.20'
   testCompile project(':cyclops').sourceSets.test.output
@@ -44,6 +45,19 @@ sourceSets {
   test.compileClasspath += [configurations.provided]
   test.runtimeClasspath += [configurations.provided]
 }
+task packageTests(type: Jar) {
+    from sourceSets.test.output
+    classifier = 'tests'
+}
+
+test {
+    reports.html.destination = file("$buildDir/reports/test")
+    testLogging {
+        events "started", "passed", "skipped", "failed"//, "standardOut", "standardError"
+    }
+}
+
+artifacts.archives packageTests
 
 modifyPom {
   project {

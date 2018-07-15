@@ -1,18 +1,21 @@
 package cyclops.monads.transformers;
 
-import com.oath.anym.AnyMValue;
+import com.oath.cyclops.anym.AnyMValue;
+import com.oath.cyclops.ReactiveConvertableSequence;
+import cyclops.ReactiveReducers;
 import cyclops.companion.*;
+import cyclops.data.Seq;
 import cyclops.monads.AnyMs;
 import cyclops.monads.Witness;
 import cyclops.monads.Witness.*;
 
 import com.oath.cyclops.types.mixins.Printable;
+import cyclops.monads.transformers.jdk.CompletableFutureT;
 import cyclops.reactive.collections.immutable.LinkedListX;
 import com.oath.cyclops.util.box.Mutable;
 import cyclops.reactive.collections.mutable.ListX;
 import cyclops.control.*;
 import cyclops.control.Maybe;
-import cyclops.control.Trampoline;
 import cyclops.function.Monoid;
 import cyclops.monads.AnyM;
 
@@ -110,16 +113,16 @@ public class CompletableFutureTTest implements Printable {
 	@Test
 	public void testWhenFunctionOfQsuperTQextendsRSupplierOfQextendsR() {
 
-		assertThat(just.visit(i->i+1,()->20),equalTo(AnyM.ofNullable(11)));
-		assertThat(none.visit(i->i+1,()->20),equalTo(AnyM.ofNullable(null)));
+		assertThat(just.fold(i->i+1,()->20),equalTo(AnyM.ofNullable(11)));
+		assertThat(none.fold(i->i+1,()->20),equalTo(AnyM.ofNullable(null)));
 	}
 
 
 
 	@Test
 	public void testStream() {
-		assertThat(just.stream().toListX(),equalTo(ListX.of(10)));
-		assertThat(none.stream().toListX(),equalTo(ListX.of()));
+		assertThat(just.stream().to(ReactiveConvertableSequence::converter).listX(),equalTo(ListX.of(10)));
+		assertThat(none.stream().to(ReactiveConvertableSequence::converter).listX(),equalTo(ListX.of()));
 	}
 
 	@Test
@@ -129,7 +132,7 @@ public class CompletableFutureTTest implements Printable {
 
 	@Test
     public void testConvertTo() {
-        AnyM<optional,Stream<Integer>> toStream = just.visit(m->Stream.of(m),()->Stream.of());
+        AnyM<optional,Stream<Integer>> toStream = just.fold(m->Stream.of(m),()->Stream.of());
 
         assertThat(toStream.stream().flatMap(i->i).collect(Collectors.toList()),equalTo(ListX.of(10)));
     }
@@ -149,7 +152,7 @@ public class CompletableFutureTTest implements Printable {
 
 	@Test
 	public void testMapReduceReducerOfE() {
-		assertThat(just.mapReduce(Reducers.toCountInt()),equalTo(1));
+		assertThat(just.foldMap(Reducers.toCountInt()),equalTo(1));
 	}
 
 	@Test
@@ -238,44 +241,44 @@ public class CompletableFutureTTest implements Printable {
 
 	@Test
 	public void testMapReduceReducerOfR() {
-		assertThat(just.mapReduce(Reducers.toLinkedListX()),equalTo(LinkedListX.of(10)));
+		assertThat(just.foldMap(ReactiveReducers.toLinkedListX()),equalTo(LinkedListX.of(10)));
 	}
 
 	@Test
 	public void testMapReduceFunctionOfQsuperTQextendsRMonoidOfR() {
-		assertThat(just.mapReduce(s->s.toString(), Monoid.of("", Semigroups.stringJoin(","))),equalTo(",10"));
+		assertThat(just.foldMap(s->s.toString(), Monoid.of("", Semigroups.stringJoin(","))),equalTo(",10"));
 	}
 
 	@Test
 	public void testReduceMonoidOfT() {
-		assertThat(just.reduce(Monoid.of(1, Semigroups.intMult)),equalTo(10));
+		assertThat(just.foldLeft(Monoid.of(1, Semigroups.intMult)),equalTo(10));
 	}
 
 	@Test
 	public void testReduceBinaryOperatorOfT() {
-		assertThat(just.reduce((a,b)->a+b),equalTo(Optional.of(10)));
+		assertThat(just.foldLeft((a,b)->a+b),equalTo(Option.of(10)));
 	}
 
 	@Test
 	public void testReduceTBinaryOperatorOfT() {
-		assertThat(just.reduce(10,(a,b)->a+b),equalTo(20));
+		assertThat(just.foldLeft(10,(a,b)->a+b),equalTo(20));
 	}
 
 	@Test
 	public void testReduceUBiFunctionOfUQsuperTUBinaryOperatorOfU() {
-		assertThat(just.reduce(11,(a,b)->a+b,(a,b)->a*b),equalTo(21));
+		assertThat(just.foldLeft(11,(a,b)->a+b,(a,b)->a*b),equalTo(21));
 	}
 
 	@Test
 	public void testReduceStreamOfQextendsMonoidOfT() {
-		ListX<Integer> countAndTotal = just.reduce(Stream.of(Reducers.toCountInt(),Reducers.toTotalInt()));
-		assertThat(countAndTotal,equalTo(ListX.of(1,10)));
+		Seq<Integer> countAndTotal = just.foldLeft(ListX.of(Reducers.toCountInt(),Reducers.toTotalInt()));
+		assertThat(countAndTotal,equalTo(Seq.of(1,10)));
 	}
 
 	@Test
 	public void testReduceIterableOfReducerOfT() {
-		ListX<Integer> countAndTotal = just.reduce(Arrays.asList(Reducers.toCountInt(),Reducers.toTotalInt()));
-		assertThat(countAndTotal,equalTo(ListX.of(1,10)));
+		Seq<Integer> countAndTotal = just.foldLeft(ListX.of(Reducers.toCountInt(),Reducers.toTotalInt()));
+		assertThat(countAndTotal,equalTo(Seq.of(1,10)));
 	}
 
 
@@ -292,7 +295,7 @@ public class CompletableFutureTTest implements Printable {
 
 	@Test
 	public void testFoldRightMapToType() {
-		assertThat(just.foldRightMapToType(Reducers.toLinkedListX()),equalTo(LinkedListX.of(10)));
+		assertThat(just.foldMapRight(ReactiveReducers.toLinkedListX()),equalTo(LinkedListX.of(10)));
 	}
 
 
@@ -302,13 +305,13 @@ public class CompletableFutureTTest implements Printable {
 
 
 	    String match = Maybe.just("data is present")
-	                        .visit(present->"hello", ()->"missing");
+	                        .fold(present->"hello", ()->"missing");
 
 
 
-		assertThat(just.visit(s->"hello", ()->"world"),equalTo(AnyM.ofNullable("hello")));
+		assertThat(just.fold(s->"hello", ()->"world"),equalTo(AnyM.ofNullable("hello")));
 		//none remains none as visit is on the Future not the Optional
-		assertThat(none.visit(s->"hello", ()->"world"),equalTo(AnyM.ofNullable(null)));
+		assertThat(none.fold(s->"hello", ()->"world"),equalTo(AnyM.ofNullable(null)));
 	}
 
 
@@ -380,15 +383,6 @@ public class CompletableFutureTTest implements Printable {
 		just.get();
 		assertThat(capture.get(),equalTo(10));
 	}
-
-	private Trampoline<Integer> sum(int times, int sum){
-		return times ==0 ?  Trampoline.done(sum) : Trampoline.more(()->sum(times-1,sum+times));
-	}
-	@Test
-	public void testTrampoline() {
-		assertThat(just.trampoline(n ->sum(10,n)).orElse(-1),equalTo(65));
-	}
-
 
 
 

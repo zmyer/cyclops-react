@@ -1,15 +1,16 @@
 package cyclops.futurestream;
 
+import com.oath.cyclops.ReactiveConvertableSequence;
 import com.oath.cyclops.react.threads.SequentialElasticPools;
 import com.oath.cyclops.types.reactive.ValueSubscriber;
 import com.oath.cyclops.async.adapters.Adapter;
 import com.oath.cyclops.util.box.LazyImmutable;
-import cyclops.reactive.collections.immutable.PersistentMapX;
+import cyclops.data.HashMap;
+import cyclops.data.ImmutableMap;
 import cyclops.reactive.collections.mutable.ListX;
 import cyclops.data.tuple.Tuple;
 import cyclops.data.tuple.Tuple0;
 import cyclops.control.*;
-import cyclops.control.Eval;
 import cyclops.control.Maybe;
 import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.Spouts;
@@ -88,8 +89,8 @@ public class Pipes<K, V> {
     /**
      * @return Persistent transform of all registered adapters
      */
-    public PersistentMapX<K, Adapter<V>> registered() {
-        return PersistentMapX.fromMap(registered);
+    public ImmutableMap<K, Adapter<V>> registered() {
+        return HashMap.fromMap(registered);
     }
 
     /**
@@ -262,7 +263,7 @@ public class Pipes<K, V> {
 
         return get(key).map(a -> a.stream()
                                     .limit(x)
-                                    .toListX())
+                                    .to(ReactiveConvertableSequence::converter).listX())
                        .orElse(ListX.empty());
     }
 
@@ -392,7 +393,7 @@ public class Pipes<K, V> {
             final ValueSubscriber<V> sub = ValueSubscriber.subscriber();
             get(key).peek(a -> a.stream()
                     .subscribe(sub))
-                    .map(a -> sub.toMaybe().visit(s -> {
+                    .map(a -> sub.toMaybe().fold(s -> {
                         res.complete(s);
                         return Tuple.empty();
                     }, () -> {

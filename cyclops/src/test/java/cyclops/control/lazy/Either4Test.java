@@ -6,11 +6,12 @@ import cyclops.companion.Semigroups;
 import cyclops.companion.Streams;
 import cyclops.control.Future;
 import com.oath.cyclops.util.box.Mutable;
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.control.*;
 import cyclops.control.LazyEither4;
 import cyclops.control.Maybe;
 import cyclops.control.Trampoline;
+import cyclops.data.Seq;
 import cyclops.function.Monoid;
 
 import cyclops.reactive.ReactiveSeq;
@@ -99,27 +100,27 @@ public class Either4Test {
 
     @Test
     public void testTraverseLeft1() {
-        ListX<LazyEither4<Integer,String,String,String>> list = ListX.of(just,none, LazyEither4.<String,String,String,Integer>right(1)).map(LazyEither4::swap1);
+        Seq<LazyEither4<Integer,String,String,String>> list = Seq.of(just,none, LazyEither4.<String,String,String,Integer>right(1)).map(LazyEither4::swap1);
       LazyEither4<Integer, String, String, ReactiveSeq<String>> xors = LazyEither4.traverse(list, s -> "hello:" + s);
-        assertThat(xors.map(s->s.toList()),equalTo(LazyEither4.right(ListX.of("hello:none"))));
+        assertThat(xors.map(s->s.toList()),equalTo(LazyEither4.right(Arrays.asList("hello:none"))));
     }
     @Test
     public void testSequenceLeft1() {
-        ListX<LazyEither4<Integer,String,String,String>> list = ListX.of(just,none, LazyEither4.<String,String,String,Integer>right(1)).map(LazyEither4::swap1);
+        Seq<LazyEither4<Integer,String,String,String>> list = Seq.of(just,none, LazyEither4.<String,String,String,Integer>right(1)).map(LazyEither4::swap1);
       LazyEither4<Integer, String, String, ReactiveSeq<String>> xors = LazyEither4.sequence(list);
-        assertThat(xors.map(s->s.toList()),equalTo(LazyEither4.right(ListX.of("none"))));
+        assertThat(xors.map(s->s.toList()),equalTo(LazyEither4.right(Arrays.asList("none"))));
     }
     @Test
     public void testSequenceLeft2() {
-        ListX<LazyEither4<String,Integer,String,String>> list = ListX.of(just,left2, LazyEither4.<String,String,String,Integer>right(1)).map(LazyEither4::swap2);
+        Seq<LazyEither4<String,Integer,String,String>> list = Seq.of(just,left2, LazyEither4.<String,String,String,Integer>right(1)).map(LazyEither4::swap2);
       LazyEither4<String, Integer, String, ReactiveSeq<String>> xors = LazyEither4.sequence(list);
-        assertThat(xors.map(s->s.toList()),equalTo(LazyEither4.right(ListX.of("left2"))));
+        assertThat(xors.map(s->s.toList()),equalTo(LazyEither4.right(Arrays.asList("left2"))));
     }
 
 
     @Test
     public void testAccumulate() {
-      LazyEither4<String, String, String, Integer> iors = LazyEither4.accumulate(Monoids.intSum, ListX.of(none, just, LazyEither4.right(10)));
+      LazyEither4<String, String, String, Integer> iors = LazyEither4.accumulate(Monoids.intSum, Arrays.asList(none, just, LazyEither4.right(10)));
         assertThat(iors,equalTo(LazyEither4.right(20)));
     }
 
@@ -137,10 +138,10 @@ public class Either4Test {
     @Test
     public void visit(){
 
-        assertThat(just.visit(secondary->"no", left2->"left2",left3->"left3", primary->"yes"),equalTo("yes"));
-        assertThat(none.visit(secondary->"no", left2->"left2",left3->"left3", primary->"yes"),equalTo("no"));
-        assertThat(left2.visit(secondary->"no", left2->"left2",left3->"left3", primary->"yes"),equalTo("left2"));
-        assertThat(left3.visit(secondary->"no", left2->"left2",left3->"left3", primary->"yes"),equalTo("left3"));
+        assertThat(just.fold(secondary->"no", left2->"left2", left3->"left3", primary->"yes"),equalTo("yes"));
+        assertThat(none.fold(secondary->"no", left2->"left2", left3->"left3", primary->"yes"),equalTo("no"));
+        assertThat(left2.fold(secondary->"no", left2->"left2", left3->"left3", primary->"yes"),equalTo("left2"));
+        assertThat(left3.fold(secondary->"no", left2->"left2", left3->"left3", primary->"yes"),equalTo("left3"));
     }
 
     @Test
@@ -194,15 +195,15 @@ public class Either4Test {
 
     @Test
     public void testWhenFunctionOfQsuperTQextendsRSupplierOfQextendsR() {
-        assertThat(just.visit(i->i+1,()->20),equalTo(11));
-        assertThat(none.visit(i->i+1,()->20),equalTo(20));
+        assertThat(just.fold(i->i+1,()->20),equalTo(11));
+        assertThat(none.fold(i->i+1,()->20),equalTo(20));
     }
 
 
     @Test
     public void testStream() {
-        assertThat(just.stream().toListX(),equalTo(ListX.of(10)));
-        assertThat(none.stream().toListX(),equalTo(ListX.of()));
+        assertThat(just.stream().toList(),equalTo(Arrays.asList(10)));
+        assertThat(none.stream().toList(),equalTo(Arrays.asList()));
     }
 
     @Test
@@ -213,16 +214,16 @@ public class Either4Test {
     @Test
     public void testConvertTo() {
 
-        Stream<Integer> toStream = just.visit(m->Stream.of(m),()->Stream.of());
-        assertThat(toStream.collect(Collectors.toList()),equalTo(ListX.of(10)));
+        Stream<Integer> toStream = just.fold(m->Stream.of(m),()->Stream.of());
+        assertThat(toStream.collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
 
     @Test
     public void testConvertToAsync() {
-        Future<Stream<Integer>> async = Future.of(()->just.visit(f->Stream.of((int)f),()->Stream.of()));
+        Future<Stream<Integer>> async = Future.of(()->just.fold(f->Stream.of((int)f),()->Stream.of()));
 
-        assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(ListX.of(10)));
+        assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
     @Test
@@ -346,8 +347,8 @@ public class Either4Test {
 
     @Test
     public void testWhenFunctionOfQsuperMaybeOfTQextendsR() {
-        assertThat(just.visit(s->"hello", ()->"world"),equalTo("hello"));
-        assertThat(none.visit(s->"hello", ()->"world"),equalTo("world"));
+        assertThat(just.fold(s->"hello", ()->"world"),equalTo("hello"));
+        assertThat(none.fold(s->"hello", ()->"world"),equalTo("world"));
     }
 
 
@@ -420,11 +421,6 @@ public class Either4Test {
     private Trampoline<Integer> sum(int times, int sum){
         return times ==0 ?  Trampoline.done(sum) : Trampoline.more(()->sum(times-1,sum+times));
     }
-    @Test
-    public void testTrampoline() {
-        assertThat(just.trampoline(n ->sum(10,n)),equalTo(LazyEither4.right(65)));
-    }
-
 
 
     @Test

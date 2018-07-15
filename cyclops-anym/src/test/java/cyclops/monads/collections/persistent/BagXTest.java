@@ -1,7 +1,7 @@
 package cyclops.monads.collections.persistent;
 
 
-import com.oath.anym.AnyMSeq;
+import com.oath.cyclops.anym.AnyMSeq;
 import cyclops.reactive.collections.immutable.BagX;
 import cyclops.companion.Reducers;
 import cyclops.monads.AnyM;
@@ -31,19 +31,8 @@ public class BagXTest extends AbstractAnyMSeqTest<bagX> {
 	public <T> AnyMSeq<bagX,T> empty() {
 		return AnyM.fromBagX(BagX.empty());
 	}
-	 /* (non-Javadoc)
-     * @see com.oath.cyclops.function.collections.extensions.AbstractAnyMSeqTest#whenGreaterThan2()
-     */
-    @Override
-    @Test
-    public void whenGreaterThan2() {
 
-    }
 
-    @Test
-    public void testRetry(){
-        of(1,2,3).retry(i->i+2).printOut();
-    }
 
 	@Test @Ignore
 	public void testSorted() {

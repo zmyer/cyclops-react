@@ -8,33 +8,25 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import com.oath.cyclops.hkt.Higher;
-import cyclops.reactive.collections.immutable.LinkedListX;
-import cyclops.reactive.collections.mutable.ListX;
-import cyclops.reactive.collections.immutable.VectorX;
-import cyclops.control.Option;
-import com.oath.cyclops.hkt.DataWitness.supplier;
+import cyclops.control.*;
+import cyclops.data.LazySeq;
+import cyclops.data.Seq;
 
 
+import cyclops.data.Vector;
 import cyclops.reactive.ReactiveSeq;
-
-
-import cyclops.control.Eval;
-import cyclops.control.Future;
-import cyclops.control.Maybe;
-import cyclops.control.Try;
 
 @FunctionalInterface
 public interface Function0<R> extends Supplier<R> {
 
-    public static <  T3,R> Function0< R> λ(final Supplier<R> triFunc){
+    public static <R> Function0< R> λ(final Supplier<R> triFunc){
     return ()->triFunc.get();
   }
 
-    public static <  T3,R> Function0< R> λ(final Function0<R> triFunc){
+    public static <R> Function0< R> λ(final Function0<R> triFunc){
         return triFunc;
     }
-    public static <  T3,R> Function0<? extends R> λv(final Function0<? extends R> triFunc){
+    public static <R> Function0<? extends R> λv(final Function0<? extends R> triFunc){
         return triFunc;
     }
 
@@ -137,17 +129,18 @@ public interface Function0<R> extends Supplier<R> {
         }
 
 
-        default Function0<ListX<R>> liftList() {
-            return () -> ListX.of(apply());
+        default Function0<Seq<R>> liftSeq() {
+            return () -> Seq.of(apply());
         }
 
 
-        default Function0<LinkedListX<R>> liftPStack() {
-            return () -> LinkedListX.of(apply());
+
+        default Function0<LazySeq<R>> liftLazySeq() {
+            return () -> LazySeq.of(apply());
         }
 
-        default Function0<VectorX<R>> liftPVector() {
-            return () -> VectorX.of(apply());
+        default Function0<Vector<R>> liftVector() {
+            return () -> Vector.of(apply());
         }
     }
 

@@ -6,7 +6,7 @@ import cyclops.companion.Semigroups;
 import cyclops.companion.Streams;
 import cyclops.control.Future;
 import com.oath.cyclops.util.box.Mutable;
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.control.*;
 import cyclops.control.LazyEither.CompletableEither;
 import cyclops.function.Monoid;
@@ -125,7 +125,7 @@ public class CompletableEitherTest {
 
     @Test
     public void testAccumulateSecondarySemigroupIntSum() {
-        Ior<?,Integer> iors = Ior.accumulateLeft(Monoids.intSum,ListX.of(Ior.both(2, "boo!"),Ior.left(1)));
+        Ior<?,Integer> iors = Ior.accumulateLeft(Monoids.intSum,Arrays.asList(Ior.both(2, "boo!"),Ior.left(1)));
         assertThat(iors,equalTo(Ior.right(3)));
     }
 
@@ -135,8 +135,8 @@ public class CompletableEitherTest {
     @Test
     public void visit(){
 
-        assertThat(just.visit(secondary->"no", primary->"yes"),equalTo("yes"));
-        assertThat(none.visit(secondary->"no", primary->"yes"),equalTo("no"));
+        assertThat(just.fold(secondary->"no", primary->"yes"),equalTo("yes"));
+        assertThat(none.fold(secondary->"no", primary->"yes"),equalTo("no"));
     }
     @Test
     public void visitEither(){
@@ -206,15 +206,15 @@ public class CompletableEitherTest {
 
     @Test
     public void testWhenFunctionOfQsuperTQextendsRSupplierOfQextendsR() {
-        assertThat(just.visit(i->i+1,()->20),equalTo(11));
-        assertThat(none.visit(i->i+1,()->20),equalTo(20));
+        assertThat(just.fold(i->i+1,()->20),equalTo(11));
+        assertThat(none.fold(i->i+1,()->20),equalTo(20));
     }
 
 
     @Test
     public void testStream() {
-        assertThat(just.stream().toListX(),equalTo(ListX.of(10)));
-        assertThat(none.stream().toListX(),equalTo(ListX.of()));
+        assertThat(just.stream().toList(),equalTo(Arrays.asList(10)));
+        assertThat(none.stream().toList(),equalTo(Arrays.asList()));
     }
 
     @Test
@@ -225,16 +225,16 @@ public class CompletableEitherTest {
     @Test
     public void testConvertTo() {
 
-        Stream<Integer> toStream = just.visit(m->Stream.of(m),()->Stream.of());
-        assertThat(toStream.collect(Collectors.toList()),equalTo(ListX.of(10)));
+        Stream<Integer> toStream = just.fold(m->Stream.of(m),()->Stream.of());
+        assertThat(toStream.collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
 
     @Test
     public void testConvertToAsync() {
-        Future<Stream<Integer>> async = Future.of(()->just.visit(f->Stream.of((int)f),()->Stream.of()));
+        Future<Stream<Integer>> async = Future.of(()->just.fold(f->Stream.of((int)f),()->Stream.of()));
 
-        assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(ListX.of(10)));
+        assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(Arrays.asList(10)));
     }
 
     @Test
@@ -344,8 +344,8 @@ public class CompletableEitherTest {
 
     @Test
     public void testWhenFunctionOfQsuperMaybeOfTQextendsR() {
-        assertThat(just.visit(s->"hello", ()->"world"),equalTo("hello"));
-        assertThat(none.visit(s->"hello", ()->"world"),equalTo("world"));
+        assertThat(just.fold(s->"hello", ()->"world"),equalTo("hello"));
+        assertThat(none.fold(s->"hello", ()->"world"),equalTo("world"));
     }
 
 
@@ -416,10 +416,6 @@ public class CompletableEitherTest {
 
     private Trampoline<Integer> sum(int times,int sum){
         return times ==0 ?  Trampoline.done(sum) : Trampoline.more(()->sum(times-1,sum+times));
-    }
-    @Test
-    public void testTrampoline() {
-        assertThat(just.trampoline(n ->sum(10,n)),equalTo(LazyEither.right(65)));
     }
 
     @Test

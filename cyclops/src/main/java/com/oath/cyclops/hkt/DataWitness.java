@@ -41,17 +41,7 @@ public interface DataWitness {
   public static enum futureStream {}
   public static enum reactiveSeq {}
 
-  public static enum sortedSet {}
-  public static enum set {}
-  public static enum list {}
-  public static enum linkedListX {}
-  public static enum vectorX {}
-  public static enum persistentQueueX{}
-  public static enum persistentSetX {}
-  public static enum orderedSetX {}
-  public static enum bagX {}
-  public static enum deque{}
-  public static enum queue {}
+
   public static enum streamable{}
 
   public static enum tryType{}
@@ -64,12 +54,14 @@ public interface DataWitness {
   public static enum either {}
   public static enum eval {}
   public static enum option {}
+  public static enum validated {}
   public static enum future{}
   public static enum completableFuture {}
   public static enum optional {}
 
   public static enum reader {}
   public static enum io {}
+  public static enum managed {}
 
   public static enum supplier {}
   public static enum yoneda {}

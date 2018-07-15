@@ -11,9 +11,10 @@ import com.oath.cyclops.react.SimpleReactFailedStageException;
 import com.oath.cyclops.react.async.subscription.Continueable;
 import com.oath.cyclops.react.collectors.lazy.LazyResultConsumer;
 import com.oath.cyclops.types.futurestream.*;
+import com.oath.cyclops.types.persistent.PersistentCollection;
 import com.oath.cyclops.types.reactive.FutureStreamSynchronousPublisher;
 import com.oath.cyclops.types.reactive.ReactiveStreamsTerminalFutureOperations;
-import com.oath.cyclops.types.stream.HotStream;
+import com.oath.cyclops.types.stream.Connectable;
 import com.oath.cyclops.types.traversable.IterableX;
 import cyclops.control.Future;
 import com.oath.cyclops.async.QueueFactories;
@@ -22,8 +23,9 @@ import com.oath.cyclops.async.adapters.Queue;
 import com.oath.cyclops.async.adapters.Queue.ClosedQueueException;
 import com.oath.cyclops.async.adapters.Queue.QueueTimeoutException;
 import com.oath.cyclops.async.adapters.QueueFactory;
-import cyclops.reactive.collections.immutable.VectorX;
-import cyclops.reactive.collections.mutable.ListX;
+import cyclops.data.Seq;
+import cyclops.data.Vector;
+
 import cyclops.control.*;
 import cyclops.data.tuple.Tuple;
 import cyclops.companion.Streams;
@@ -33,7 +35,8 @@ import cyclops.function.Lambda;
 import cyclops.function.Monoid;
 
 import cyclops.reactive.ReactiveSeq;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
+import cyclops.reactive.collections.mutable.ListX;
 import lombok.val;
 import cyclops.data.tuple.Tuple2;
 import cyclops.data.tuple.Tuple3;
@@ -62,7 +65,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     return fn.apply(this);
   }
     @Override
-    default ListX<ReactiveSeq<U>> multicast(int num) {
+    default Seq<ReactiveSeq<U>> multicast(int num) {
         return stream().multicast(num);
     }
 
@@ -102,7 +105,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     @Override
-    default FutureStream<U> reduceAll(U identity, BinaryOperator<U> accumulator) {
+    default <R> FutureStream<R> reduceAll(R identity, BiFunction<R, ? super U, R>  accumulator) {
         return fromStream(stream().reduceAll(identity,accumulator));
     }
 
@@ -112,8 +115,8 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     @Override
-    default FutureStream<U> appendAll(U value){
-        return fromStream(stream().appendAll(value));
+    default FutureStream<U> append(U value){
+        return fromStream(stream().append(value));
     }
 
     @Override
@@ -317,8 +320,8 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @see org.jooq.lambda.Seq#append(java.lang.Iterable)
      */
     @Override
-    default FutureStream<U> append(Iterable<? extends U> other) {
-        return fromStream(ReactiveSeq.oneShotStream(stream()).append(other));
+    default FutureStream<U> appendAll(Iterable<? extends U> other) {
+        return fromStream(ReactiveSeq.oneShotStream(stream()).appendAll(other));
     }
 
 
@@ -422,11 +425,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
         return (FutureStream<U>) ReactiveSeq.super.notNull();
     }
 
-    @Override
-    default <R> FutureStream<R> trampoline(final Function<? super U, ? extends Trampoline<? extends R>> mapper) {
 
-        return (FutureStream<R>) ReactiveSeq.super.trampoline(mapper);
-    }
 
     @Override
     default <R> R foldRight(final R identity, final BiFunction<? super U, ? super R, ? extends R> accumulator) {
@@ -771,7 +770,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /**
-     * @return a Stream that batches all completed elements from this stream since last read recover into a toX
+     * @return a Stream that batches all completed elements from this stream since last read recover into a collection
      */
     default FutureStream<Collection<U>> chunkSinceLastRead() {
         final Queue queue = this.withQueueFactory(QueueFactories.unboundedQueue())
@@ -1108,11 +1107,11 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
     }
 
     /**
-     * Turns this FutureStream into a HotStream, a connectable Stream, being executed on a thread on the
+     * Turns this FutureStream into a Connectable, a connectable Stream, being executed on a thread on the
      * in it's current task executor, that is producing data
      * <pre>
      * {@code
-     *  HotStream<Integer> ints = new LazyReact().range(0,Integer.MAX_VALUE)
+     *  Connectable<Integer> ints = new LazyReact().range(0,Integer.MAX_VALUE)
                                                 .hotStream()
         ints.connect().forEach(System.out::println);
      *  //print out all the ints
@@ -1120,9 +1119,9 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      *
      * }
      * </pre>
-     * @return a Connectable HotStream
+     * @return a Connectable Connectable
      */
-    default HotStream<U> hotStream() {
+    default Connectable<U> hotStream() {
         return Streams.hotStream(this, getTaskExecutor());
 
     }
@@ -1316,11 +1315,11 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @see com.oath.cyclops.react.stream.traits.FutureStream#batchBySizeAndTime(int, long, java.util.concurrent.TimeUnit)
      */
     @Override
-    default FutureStream<ListX<U>> groupedBySizeAndTime(final int size, final long time, final TimeUnit unit) {
+    default ReactiveSeq<Vector<U>> groupedBySizeAndTime(final int size, final long time, final TimeUnit unit) {
         return fromStream(stream().groupedBySizeAndTime(size, time, unit));
      }
     @Override
-    default <C extends Collection<? super U>,R> FutureStream<R> groupedBySizeAndTime(final int size, final long time,
+    default <C extends PersistentCollection<? super U>,R> FutureStream<R> groupedBySizeAndTime(final int size, final long time,
                                                                             final TimeUnit unit,
                                                                             final Supplier<C> factory,
                                                                             Function<? super C, ? extends R> finalizer
@@ -1337,7 +1336,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * <pre>
      * {@code
      * 		FutureStream.of(1,1,1,1,1,1)
-     * 						.batchBySize(3,()->new TreeSet<>())
+     * 						.grouped(3,()->TreeSet.empty())
      * 						.toList()
      *
      *   //[[1],[1]]
@@ -1352,7 +1351,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @return Stream of Collections
      */
     @Override
-    default <C extends Collection<? super U>> FutureStream<C> grouped(final int size, final Supplier<C> supplier) {
+    default <C extends PersistentCollection<? super U>> FutureStream<C> grouped(final int size, final Supplier<C> supplier) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .grouped(size, supplier));
 
@@ -1496,7 +1495,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @return Stream of Lists
      */
     @Override
-    default FutureStream<ListX<U>> groupedByTime(final long time, final TimeUnit unit) {
+    default FutureStream<Vector<U>> groupedByTime(final long time, final TimeUnit unit) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .groupedByTime(time, unit));
 
@@ -1509,7 +1508,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * <pre>
      * {@code
      * List <TreeSet<Integer>> set = FutureStream.ofThread(1,1,1,1,1,1)
-     *                                               .batchByTime(1500,TimeUnit.MICROSECONDS,()-> new TreeSet<>())
+     *                                               .groupByTime(1500,TimeUnit.MICROSECONDS,()->TreeSet.empty())
      *                                               .block();
 
             assertThat(set.getValue(0).size(),is(1));
@@ -1527,13 +1526,13 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @return Stream of collections
      */
     @Override
-    default <C extends Collection<? super U>> FutureStream<C> groupedByTime(final long time, final TimeUnit unit, final Supplier<C> factory) {
+    default <C extends PersistentCollection<? super U>> FutureStream<C> groupedByTime(final long time, final TimeUnit unit, final Supplier<C> factory) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .groupedByTime(time, unit, factory));
 
     }
     @Override
-    default <C extends Collection<? super U>,R> FutureStream<R> groupedByTime(final long time, final TimeUnit unit,
+    default <C extends PersistentCollection<? super U>,R> FutureStream<R> groupedByTime(final long time, final TimeUnit unit,
                                                                             final Supplier<C> factory,
                                                                             Function<? super C, ? extends R> finalizer) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
@@ -2053,7 +2052,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @return Stream with sliding view over data in this stream
      */
     @Override
-    default FutureStream<VectorX<U>> sliding(final int size) {
+    default FutureStream<Seq<U>> sliding(final int size) {
         //    return this.fromStream(SlidingWindow.sliding(this,size, 1));
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .sliding(size));
@@ -2079,7 +2078,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @return Stream with sliding view over data in this stream
      */
     @Override
-    default FutureStream<VectorX<U>> sliding(final int size, final int increment) {
+    default FutureStream<Seq<U>> sliding(final int size, final int increment) {
 
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .sliding(size, increment));
@@ -2104,7 +2103,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      */
     default Tuple2<FutureStream<U>, FutureStream<U>> duplicateFutureStream() {
         final Tuple2<ReactiveSeq<U>, ReactiveSeq<U>> duplicated = this.duplicate();
-        return new Tuple2(
+        return Tuple.tuple(
                           fromStream(duplicated._1()), fromStream(duplicated._2()));
     }
 
@@ -2147,7 +2146,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      */
     default Tuple2<FutureStream<U>, FutureStream<U>> partitionFutureStream(final Predicate<? super U> predicate) {
         final Tuple2<ReactiveSeq<U>, ReactiveSeq<U>> partition = partition(predicate);
-        return new Tuple2(
+        return Tuple.tuple(
                           fromStream(partition._1()), fromStream(partition._2()));
     }
 
@@ -2916,7 +2915,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @see cyclops2.stream.ReactiveSeq#grouped(int)
      */
     @Override
-    default FutureStream<ListX<U>> grouped(final int groupSize) {
+    default FutureStream<Vector<U>> grouped(final int groupSize) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .grouped(groupSize));
     }
@@ -2933,46 +2932,27 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
 
 
 
-    /*
-     * @see cyclops2.stream.ReactiveSeq#startsWith(java.lang.Iterable)
-     */
+
     @Override
-    default boolean startsWithIterable(final Iterable<U> iterable) {
+    default boolean startsWith(final Iterable<U> iterable) {
         return ReactiveSeq.oneShotStream(stream())
-                          .startsWithIterable(iterable);
+                          .startsWith(iterable);
     }
 
-    /*
-     * @see cyclops2.stream.ReactiveSeq#startsWith(java.util.Iterator)
-     */
-    @Override
-    default boolean startsWith(final Stream<U> iterator) {
-        return ReactiveSeq.oneShotStream(stream())
-                          .startsWith(iterator);
-    }
 
     /*
      * @see cyclops2.stream.ReactiveSeq#endsWith(java.lang.Iterable)
      */
     @Override
-    default boolean endsWithIterable(final Iterable<U> iterable) {
+    default boolean endsWith(final Iterable<U> iterable) {
         return ReactiveSeq.oneShotStream(stream())
-                          .endsWithIterable(iterable);
-    }
-
-    /*
-     * @see cyclops2.stream.ReactiveSeq#endsWith(java.util.stream.Stream)
-     */
-    @Override
-    default boolean endsWith(final Stream<U> stream) {
-        return ReactiveSeq.oneShotStream(stream())
-                          .endsWith(stream);
+                          .endsWith(iterable);
     }
 
 
-    /*
-     * @see cyclops2.stream.ReactiveSeq#concatMap(java.util.function.Function)
-     */
+
+
+
     @Override
     default <R> FutureStream<R> concatMap(final Function<? super U, ? extends Iterable<? extends R>> fn) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
@@ -3112,47 +3092,41 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @see cyclops2.stream.ReactiveSeq#batchBySizeAndTime(int, long, java.util.concurrent.TimeUnit, java.util.function.Supplier)
      */
     @Override
-    default <C extends Collection<? super U>> FutureStream<C> groupedBySizeAndTime(final int size, final long time, final TimeUnit unit,
+    default <C extends PersistentCollection<? super U>> FutureStream<C> groupedBySizeAndTime(final int size, final long time, final TimeUnit unit,
                                                                                    final Supplier<C> factory) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .groupedBySizeAndTime(size, time, unit, factory));
-        /**         Queue<U> queue = toQueue();
-            Function<BiFunction<Long,TimeUnit,U>, Supplier<Collection<U>>> fn = new BatchByTimeAndSize(size,time,unit,factory);
-            return (FutureStream)fromStream(queue.streamBatch(getSubscription(), (Function)fn));**/
-    }
-
-    /*
-     * @see cyclops2.stream.ReactiveSeq#groupedStatefullyUntil(java.util.function.BiPredicate)
-     */
-    @Override
-    default FutureStream<ListX<U>> groupedStatefullyUntil(final BiPredicate<ListX<? super U>, ? super U> predicate) {
-        return fromStream(ReactiveSeq.oneShotStream(stream())
-                                     .groupedStatefullyUntil(predicate));
-    }
-    @Override
-    default <C extends Collection<U>,R> FutureStream<R> groupedStatefullyUntil(final BiPredicate<C, ? super U> predicate, final Supplier<C> factory,
-                                                                      Function<? super C, ? extends R> finalizer){
-        return fromStream(ReactiveSeq.oneShotStream(stream())
-                .groupedStatefullyUntil(predicate,factory,finalizer));
 
     }
+
     @Override
-    default FutureStream<ListX<U>> groupedStatefullyWhile(final BiPredicate<ListX<? super U>, ? super U> predicate) {
+    default FutureStream<Vector<U>> groupedUntil(final BiPredicate<Vector<? super U>, ? super U> predicate) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
-                .groupedStatefullyUntil(predicate));
+                                     .groupedUntil(predicate));
     }
     @Override
-    default <C extends Collection<U>,R> FutureStream<R> groupedStatefullyWhile(final BiPredicate<C, ? super U> predicate, final Supplier<C> factory,
+    default <C extends PersistentCollection<U>,R> FutureStream<R> groupedUntil(final BiPredicate<C, ? super U> predicate, final Supplier<C> factory,
                                                                                Function<? super C, ? extends R> finalizer){
         return fromStream(ReactiveSeq.oneShotStream(stream())
-                .groupedStatefullyUntil(predicate,factory,finalizer));
+                .groupedUntil(predicate,factory,finalizer));
+
+    }
+    default FutureStream<Vector<U>> groupedWhile(final BiPredicate<Vector<? super U>, ? super U> predicate) {
+        return fromStream(ReactiveSeq.oneShotStream(stream())
+                .groupedUntil(predicate));
+    }
+    @Override
+    default <C extends PersistentCollection<U>,R> FutureStream<R> groupedWhile(final BiPredicate<C, ? super U> predicate, final Supplier<C> factory,
+                                                                               Function<? super C, ? extends R> finalizer){
+        return fromStream(ReactiveSeq.oneShotStream(stream())
+                .groupedUntil(predicate,factory,finalizer));
 
     }
     /*
      * @see cyclops2.stream.ReactiveSeq#batchUntil(java.util.function.Predicate)
      */
     @Override
-    default FutureStream<ListX<U>> groupedUntil(final Predicate<? super U> predicate) {
+    default FutureStream<Vector<U>> groupedUntil(final Predicate<? super U> predicate) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .groupedUntil(predicate));
     }
@@ -3161,7 +3135,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @see cyclops2.stream.ReactiveSeq#batchWhile(java.util.function.Predicate)
      */
     @Override
-    default FutureStream<ListX<U>> groupedWhile(final Predicate<? super U> predicate) {
+    default FutureStream<Vector<U>> groupedWhile(final Predicate<? super U> predicate) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .groupedWhile(predicate));
     }
@@ -3170,7 +3144,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @see cyclops2.stream.ReactiveSeq#batchWhile(java.util.function.Predicate, java.util.function.Supplier)
      */
     @Override
-    default <C extends Collection<? super U>> FutureStream<C> groupedWhile(final Predicate<? super U> predicate, final Supplier<C> factory) {
+    default <C extends PersistentCollection<? super U>> FutureStream<C> groupedWhile(final Predicate<? super U> predicate, final Supplier<C> factory) {
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .groupedWhile(predicate, factory));
     }
@@ -3188,7 +3162,7 @@ public interface FutureStream<U> extends LazySimpleReactStream<U>,
      * @see cyclops2.stream.ReactiveSeq#batchUntil(java.util.function.Predicate, java.util.function.Supplier)
      */
     @Override
-    default <C extends Collection<? super U>> FutureStream<C> groupedUntil(final Predicate<? super U> predicate, final Supplier<C> factory) {
+    default <C extends PersistentCollection<? super U>> FutureStream<C> groupedUntil(final Predicate<? super U> predicate, final Supplier<C> factory) {
 
         return fromStream(ReactiveSeq.oneShotStream(stream())
                                      .groupedUntil(predicate, factory));

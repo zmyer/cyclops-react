@@ -1,12 +1,11 @@
 package cyclops.data;
 
 
+import com.oath.cyclops.types.persistent.PersistentCollection;
 import com.oath.cyclops.types.persistent.PersistentSet;
 import com.oath.cyclops.hkt.Higher;
-import cyclops.reactive.collections.immutable.VectorX;
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.control.Option;
-import cyclops.control.Trampoline;
 import com.oath.cyclops.hkt.DataWitness.trieSet;
 import cyclops.data.base.HashedPatriciaTrie;
 import cyclops.data.tuple.Tuple;
@@ -24,8 +23,9 @@ import org.reactivestreams.Publisher;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.function.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -38,6 +38,10 @@ public final class TrieSet<T> implements ImmutableSet<T>,
         return new TrieSet<T>( HashedPatriciaTrie.empty());
     }
 
+    static <T> Collector<T, Set<T>, TrieSet<T>> collector() {
+        Collector<T, ?, Set<T>> c  = Collectors.toSet();
+        return Collectors.<T, Set<T>, Iterable<T>,TrieSet<T>>collectingAndThen((Collector)c,TrieSet::fromIterable);
+    }
     static <U, T> TrieSet<T> unfold(final U seed, final Function<? super U, Option<Tuple2<T, U>>> unfolder) {
         return fromStream(ReactiveSeq.unfold(seed,unfolder));
     }
@@ -151,10 +155,6 @@ public final class TrieSet<T> implements ImmutableSet<T>,
         return fromStream(ReactiveSeq.fromStream(stream));
     }
 
-    @Override
-    public <U> TrieSet<U> unitIterator(Iterator<U> it) {
-        return fromIterable(()->it);
-    }
 
     public TrieSet<T> plus(T value){
         return new TrieSet<>(map.put(value.hashCode(),value,value));
@@ -199,7 +199,7 @@ public final class TrieSet<T> implements ImmutableSet<T>,
 
     @Override
     public String toString(){
-        return stream().join(",","[","]");
+        return stream().join(", ","[","]");
     }
 
     public TrieSet<T> take(final long n) {
@@ -233,7 +233,7 @@ public final class TrieSet<T> implements ImmutableSet<T>,
     }
 
 
-    public TrieSet<T> appendAll(T append) {
+    public TrieSet<T> append(T append) {
         return add(append);
     }
 
@@ -275,10 +275,7 @@ public final class TrieSet<T> implements ImmutableSet<T>,
         return (TrieSet<T>)ImmutableSet.super.peek(c);
     }
 
-    @Override
-    public <R> TrieSet<R> trampoline(Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-        return (TrieSet<R>)ImmutableSet.super.trampoline(mapper);
-    }
+
 
     @Override
     public TrieSet<T> removeStream(Stream<? extends T> stream) {
@@ -396,28 +393,28 @@ public final class TrieSet<T> implements ImmutableSet<T>,
     }
 
     @Override
-    public TrieSet<VectorX<T>> sliding(int windowSize) {
-        return (TrieSet<VectorX<T>>) ImmutableSet.super.sliding(windowSize);
+    public TrieSet<Seq<T>> sliding(int windowSize) {
+        return (TrieSet<Seq<T>>) ImmutableSet.super.sliding(windowSize);
     }
 
     @Override
-    public TrieSet<VectorX<T>> sliding(int windowSize, int increment) {
-        return (TrieSet<VectorX<T>>) ImmutableSet.super.sliding(windowSize,increment);
+    public TrieSet<Seq<T>> sliding(int windowSize, int increment) {
+        return (TrieSet<Seq<T>>) ImmutableSet.super.sliding(windowSize,increment);
     }
 
     @Override
-    public <C extends Collection<? super T>> TrieSet<C> grouped(int size, Supplier<C> supplier) {
+    public <C extends PersistentCollection<? super T>> TrieSet<C> grouped(int size, Supplier<C> supplier) {
         return (TrieSet<C>) ImmutableSet.super.grouped(size,supplier);
     }
 
     @Override
-    public TrieSet<ListX<T>> groupedUntil(Predicate<? super T> predicate) {
-        return (TrieSet<ListX<T>>) ImmutableSet.super.groupedUntil(predicate);
+    public TrieSet<Vector<T>> groupedUntil(Predicate<? super T> predicate) {
+        return (TrieSet<Vector<T>>) ImmutableSet.super.groupedUntil(predicate);
     }
 
     @Override
-    public TrieSet<ListX<T>> groupedStatefullyUntil(BiPredicate<ListX<? super T>, ? super T> predicate) {
-        return (TrieSet<ListX<T>>) ImmutableSet.super.groupedStatefullyUntil(predicate);
+    public TrieSet<Vector<T>> groupedUntil(BiPredicate<Vector<? super T>, ? super T> predicate) {
+        return (TrieSet<Vector<T>>) ImmutableSet.super.groupedUntil(predicate);
     }
 
     @Override
@@ -426,23 +423,23 @@ public final class TrieSet<T> implements ImmutableSet<T>,
     }
 
     @Override
-    public TrieSet<ListX<T>> groupedWhile(Predicate<? super T> predicate) {
-        return (TrieSet<ListX<T>>) ImmutableSet.super.groupedWhile(predicate);
+    public TrieSet<Vector<T>> groupedWhile(Predicate<? super T> predicate) {
+        return (TrieSet<Vector<T>>) ImmutableSet.super.groupedWhile(predicate);
     }
 
     @Override
-    public <C extends Collection<? super T>> TrieSet<C> groupedWhile(Predicate<? super T> predicate, Supplier<C> factory) {
+    public <C extends PersistentCollection<? super T>> TrieSet<C> groupedWhile(Predicate<? super T> predicate, Supplier<C> factory) {
         return (TrieSet<C>) ImmutableSet.super.groupedWhile(predicate,factory);
     }
 
     @Override
-    public <C extends Collection<? super T>> TrieSet<C> groupedUntil(Predicate<? super T> predicate, Supplier<C> factory) {
+    public <C extends PersistentCollection<? super T>> TrieSet<C> groupedUntil(Predicate<? super T> predicate, Supplier<C> factory) {
         return (TrieSet<C>) ImmutableSet.super.groupedUntil(predicate,factory);
     }
 
     @Override
-    public TrieSet<ListX<T>> grouped(int groupSize) {
-        return (TrieSet<ListX<T>>) ImmutableSet.super.grouped(groupSize);
+    public TrieSet<Vector<T>> grouped(int groupSize) {
+        return (TrieSet<Vector<T>>) ImmutableSet.super.grouped(groupSize);
     }
 
     @Override
@@ -479,8 +476,6 @@ public final class TrieSet<T> implements ImmutableSet<T>,
     public TrieSet<T> sorted(Comparator<? super T> c) {
         return (TrieSet<T>) ImmutableSet.super.sorted(c);
     }
-
-
 
     @Override
     public TrieSet<T> takeUntil(Predicate<? super T> p) {
@@ -588,16 +583,6 @@ public final class TrieSet<T> implements ImmutableSet<T>,
         return (TrieSet<T>) ImmutableSet.super.insertStreamAt(pos,stream);
     }
 
-    @Override
-    public TrieSet<T> recover(Function<? super Throwable, ? extends T> fn) {
-        return this;
-    }
-
-    @Override
-    public <EX extends Throwable> TrieSet<T> recover(Class<EX> exceptionClass, Function<? super EX, ? extends T> fn) {
-        return this;
-    }
-
 
     @Override
     public <U extends Comparable<? super U>> TrieSet<T> sorted(Function<? super T, ? extends U> function) {
@@ -606,15 +591,7 @@ public final class TrieSet<T> implements ImmutableSet<T>,
     public String mkString(){
         return stream().join(",","[","]");
     }
-    @Override
-    public <R> TrieSet<R> retry(Function<? super T, ? extends R> fn) {
-        return (TrieSet<R>) ImmutableSet.super.retry(fn);
-    }
 
-    @Override
-    public <R> TrieSet<R> retry(Function<? super T, ? extends R> fn, int retries, long delay, TimeUnit timeUnit) {
-        return (TrieSet<R>) ImmutableSet.super.retry(fn,retries,delay,timeUnit);
-    }
 
     @Override
     public TrieSet<T> onEmpty(T value) {

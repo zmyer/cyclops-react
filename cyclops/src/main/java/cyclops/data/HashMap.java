@@ -2,7 +2,6 @@ package cyclops.data;
 
 import com.oath.cyclops.types.persistent.PersistentMap;
 import com.oath.cyclops.hkt.Higher2;
-import cyclops.reactive.collections.immutable.PersistentMapX;
 import cyclops.control.Option;
 import cyclops.control.Trampoline;
 import cyclops.function.Function3;
@@ -133,11 +132,6 @@ public final class HashMap<K,V> implements ImmutableMap<K,V>,PersistentMap<K,V>,
     @Override
     public <R1, R2> HashMap<R1, R2> bimap(Function<? super K, ? extends R1> fn1, Function<? super V, ? extends R2> fn2) {
         return fromStream(stream().map(t-> Tuple.tuple(fn1.apply(t._1()),fn2.apply(t._2()))));
-    }
-
-    @Override
-    public PersistentMapX<K, V> persistentMapX() {
-        return stream().to().persistentMapX(t->t._1(),t->t._2());
     }
 
     @Override
@@ -272,20 +266,6 @@ public final class HashMap<K,V> implements ImmutableMap<K,V>,PersistentMap<K,V>,
     return (HashMap<K, V>)ImmutableMap.super.peek(c);
   }
 
-  @Override
-  public <R> HashMap<K, R> trampoline(Function<? super V, ? extends Trampoline<? extends R>> mapper) {
-    return (HashMap<K, R>)ImmutableMap.super.trampoline(mapper);
-  }
-
-  @Override
-  public <R> HashMap<K, R> retry(Function<? super V, ? extends R> fn) {
-    return (HashMap<K, R>)ImmutableMap.super.retry(fn);
-  }
-
-  @Override
-  public <R> HashMap<K, R> retry(Function<? super V, ? extends R> fn, int retries, long delay, TimeUnit timeUnit) {
-    return (HashMap<K, R>)ImmutableMap.super.retry(fn,retries,delay,timeUnit);
-  }
 
   @Override
   public HashMap<K, V> bipeek(Consumer<? super K> c1, Consumer<? super V> c2) {
@@ -294,10 +274,6 @@ public final class HashMap<K,V> implements ImmutableMap<K,V>,PersistentMap<K,V>,
 
 
 
-  @Override
-  public <R1, R2> HashMap<R1, R2> bitrampoline(Function<? super K, ? extends Trampoline<? extends R1>> mapper1, Function<? super V, ? extends Trampoline<? extends R2>> mapper2) {
-    return (HashMap<R1, R2>)ImmutableMap.super.bitrampoline(mapper1,mapper2);
-  }
 
   @Override
   public HashMap<K, V> onEmpty(Tuple2<K, V> value) {

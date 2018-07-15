@@ -12,6 +12,7 @@ import lombok.experimental.Wither;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -20,7 +21,7 @@ import java.util.function.Supplier;
  *
  * <pre>
  *     {@code
- *      import static cyclops.stream.Generator.*;
+ *      import static cyclops.reactive.Generator.*;
  *     int i = 100;
         ReactiveSeq.generate(suspend(infinitely(),s->s.yield(i++)))
                    .take(6)
@@ -80,8 +81,12 @@ public class Generator<T> implements Iterable<T>, ToStream<T> {
         return new ConvertableSequence(this);
     }
 
+    public <R> R to(Function<? super Iterable<? super T>,? extends R> reduce){
+        return reduce.apply(this);
+    }
+
     Ior<T,Generator<T>> proceed() {
-       return value.visit(v->Ior.both(v, remainderOfWorkToBeDone.get()),()->
+       return value.fold(v->Ior.both(v, remainderOfWorkToBeDone.get()),()->
                 Ior.right(remainderOfWorkToBeDone.get()));
     }
 

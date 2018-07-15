@@ -3,11 +3,11 @@ package cyclops.streams.push.syncflux;
 
 import cyclops.companion.Semigroups;
 import cyclops.companion.Streams;
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.control.Maybe;
 import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.Spouts;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 import reactor.core.publisher.Flux;
@@ -36,7 +36,7 @@ public class SyncRSExtensionOperatorsTest {
     public void combine(){
         assertThat(of(1,1,2,3)
                    .combine((a, b)->a.equals(b),Semigroups.intSum)
-                   .toListX(),equalTo(ListX.of(4,3)));
+                   .toList(),equalTo(Arrays.asList(4,3)));
 
     }
 	@Test
@@ -254,82 +254,52 @@ public class SyncRSExtensionOperatorsTest {
 	@Test
 	public void endsWith(){
 		assertTrue(of(1,2,3,4,5,6)
-				.endsWithIterable(Arrays.asList(5,6)));
+				.endsWith(Arrays.asList(5,6)));
 	}
 	@Test
 	public void endsWithFalse(){
 		assertFalse(of(1,2,3,4,5,6)
-				.endsWithIterable(Arrays.asList(5,6,7)));
+				.endsWith(Arrays.asList(5,6,7)));
 	}
 	@Test
 	public void endsWithToLong(){
 		assertFalse(of(1,2,3,4,5,6)
-				.endsWithIterable(Arrays.asList(0,1,2,3,4,5,6)));
+				.endsWith(Arrays.asList(0,1,2,3,4,5,6)));
 	}
 	@Test
 	public void endsWithEmpty(){
 		assertTrue(of(1,2,3,4,5,6)
-				.endsWithIterable(Arrays.asList()));
+				.endsWith(Arrays.asList()));
 	}
 	@Test
 	public void endsWithWhenEmpty(){
 		assertFalse(of()
-				.endsWithIterable(Arrays.asList(1,2,3,4,5,6)));
+				.endsWith(Arrays.asList(1,2,3,4,5,6)));
 	}
 	@Test
 	public void endsWithBothEmpty(){
 		assertTrue(Spouts.<Integer>of()
-				.endsWithIterable(Arrays.asList()));
+				.endsWith(Arrays.asList()));
 	}
-	@Test
-	public void endsWithStream(){
-		assertTrue(of(1,2,3,4,5,6)
-				.endsWith(Stream.of(5,6)));
-	}
-	@Test
-	public void endsWithFalseStream(){
-		assertFalse(of(1,2,3,4,5,6)
-				.endsWith(Stream.of(5,6,7)));
-	}
-	@Test
-	public void endsWithToLongStream(){
-		assertFalse(of(1,2,3,4,5,6)
-				.endsWith(Stream.of(0,1,2,3,4,5,6)));
-	}
-	@Test
-	public void endsWithEmptyStream(){
-		assertTrue(of(1,2,3,4,5,6)
-				.endsWith(Stream.of()));
-	}
-	@Test
-	public void endsWithWhenEmptyStream(){
-		assertFalse(of()
-				.endsWith(Stream.of(1,2,3,4,5,6)));
-	}
-	@Test
-	public void endsWithBothEmptyStream(){
-		assertTrue(Spouts.<Integer>of()
-				.endsWith(Stream.of()));
-	}
+
 
 	@Test
 	public void streamable(){
-		Streamable<Integer> repeat = of(1,2,3,4,5,6)
-												.map(i->i*2).to()
-												.streamable();
+		Streamable<Integer> repeat = Streamable.fromStream(of(1,2,3,4,5,6)
+												.map(i->i*2));
 
-		assertThat(repeat.reactiveSeq().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
-		assertThat(repeat.reactiveSeq().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
+		assertThat(repeat.stream().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
+		assertThat(repeat.stream().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
 	}
 
 	@Test
 	public void concurrentLazyStreamable(){
 		Streamable<Integer> repeat = of(1,2,3,4,5,6)
 												.map(i->i*2).to()
-												.lazyStreamableSynchronized();
+												.streamable();
 
-		assertThat(repeat.reactiveSeq().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
-		assertThat(repeat.reactiveSeq().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
+		assertThat(repeat.stream().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
+		assertThat(repeat.stream().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
 	}
 	@Test
 	public void splitBy(){
@@ -349,7 +319,7 @@ public class SyncRSExtensionOperatorsTest {
 	public void testLazyCollection(){
 		Collection<Integer> col = of(1,2,3,4,5)
 											.peek(System.out::println).to()
-											.lazyCollectionSynchronized();
+											.lazyCollection();
 		System.out.println("takeOne!");
 		col.forEach(System.out::println);
 		assertThat(col.size(),equalTo(5));

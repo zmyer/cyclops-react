@@ -1,7 +1,8 @@
 package cyclops.monads.collections.mutable;
 
 
-import com.oath.anym.AnyMSeq;
+import com.oath.cyclops.anym.AnyMSeq;
+import com.oath.cyclops.ReactiveConvertableSequence;
 import cyclops.reactive.collections.mutable.ListX;
 import cyclops.monads.AnyM;
 import cyclops.monads.Witness;
@@ -72,10 +73,10 @@ public class ReactiveStreamXTest extends AbstractAnyMSeqOrderedDependentTest<rea
     }
     @Test
     public void materialize(){
-        ListX<Integer> d= of(1, 2, 3).cycleUntil(next->count++==6).toListX();
+        ListX<Integer> d= of(1, 2, 3).cycleUntil(next->count++==6).to(ReactiveConvertableSequence::converter).listX();
         System.out.println("D " + d);
         count =0;
-        assertEquals(asList(1, 2,3, 1, 2,3),of(1, 2, 3).cycleUntil(next->count++==6).toListX());
+        assertEquals(asList(1, 2,3, 1, 2,3),of(1, 2, 3).cycleUntil(next->count++==6).to(ReactiveConvertableSequence::converter).listX());
     }
     @Test
     public void testCycleUntil() {
@@ -83,16 +84,16 @@ public class ReactiveStreamXTest extends AbstractAnyMSeqOrderedDependentTest<rea
         ReactiveSeq<Integer> stream1 = Spouts.of(1,2,3);
         ReactiveSeq<Integer> stream2 = AnyM.fromStream(stream1).unwrap();
         assertTrue(stream1== stream2);
-        System.out.println("Stream2 cycling " + stream2.cycleUntil(next->count++==6).toListX().materialize());
+        System.out.println("Stream2 cycling " + stream2.cycleUntil(next->count++==6).to(ReactiveConvertableSequence::converter).listX().materialize());
         count=0;
         System.out.println("Cycle until!");
-        ListX<Integer> a =Spouts.of(1,2,3).cycleUntil(next->count++==6).toListX().materialize();
+        ListX<Integer> a =Spouts.of(1,2,3).cycleUntil(next->count++==6).to(ReactiveConvertableSequence::converter).listX().materialize();
         count=0;
-        ListX<Integer> b= Witness.reactiveSeq(of(1, 2, 3)).cycleUntil(next->count++==6).toListX();
+        ListX<Integer> b= Witness.reactiveSeq(of(1, 2, 3)).cycleUntil(next->count++==6).to(ReactiveConvertableSequence::converter).listX();
         count=0;
-        ListX<Integer> c= Witness.reactiveSeq(of(1, 2, 3).cycleUntil(next->count++==6)).toListX();
+        ListX<Integer> c= Witness.reactiveSeq(of(1, 2, 3).cycleUntil(next->count++==6)).to(ReactiveConvertableSequence::converter).listX();
         count=0;
-        ListX<Integer> d= of(1, 2, 3).cycleUntil(next->count++==6).toListX();
+        ListX<Integer> d= of(1, 2, 3).cycleUntil(next->count++==6).to(ReactiveConvertableSequence::converter).listX();
         System.out.println("A " + a);
         count=0;
         System.out.println("B " + b);
@@ -102,61 +103,22 @@ public class ReactiveStreamXTest extends AbstractAnyMSeqOrderedDependentTest<rea
         System.out.println("D " + d);
         count=0;
 
-        System.out.println("Cycle"  +Spouts.of(1,2,3).cycleUntil(next->count++==6).toListX());
+        System.out.println("Cycle"  +Spouts.of(1,2,3).cycleUntil(next->count++==6).to(ReactiveConvertableSequence::converter).listX());
         System.out.println("Print!");
         //  of(1, 2, 3).cycleUntil(next->count++==6).printOut();
         count=0;
-        assertEquals(asList(1, 2,3, 1, 2,3),of(1, 2, 3).cycleUntil(next->count++==6).toListX());
+        assertEquals(asList(1, 2,3, 1, 2,3),of(1, 2, 3).cycleUntil(next->count++==6).to(ReactiveConvertableSequence::converter).listX());
 
     }
 	@Override
 	public <T> AnyMSeq<reactiveSeq,T> of(T... values) {
 		return AnyM.fromStream(Spouts.of(values));
 	}
-	/* (non-Javadoc)
-	 * @see com.oath.cyclops.function.collections.extensions.AbstractCollectionXTest#zero()
-	 */
+
 	@Override
 	public <T> AnyMSeq<reactiveSeq,T> empty() {
 		return AnyM.fromStream(Spouts.empty());
 	}
-	@Test
-    public void when(){
-
-        String res= AnyM.fromStream(ReactiveSeq.of(1,2,3)).visit((x,xs)->
-                                xs.join(x>2? "hello" : "world"),()->"boo!");
-
-        assertThat(res,equalTo("2world3"));
-    }
-	@Test
-    public void whenGreaterThan2(){
-        System.out.println("Value = "+Spouts.of(5,2,3).visit((x,xs)->{
-            System.out.println("X is " + x);
-            System.out.println("XS " + xs.toList());
-                  return   xs.join(x>2? "hello" : "world");
-        },()->"boo!") );
-        String res= of(5,2,3).visit((x,xs)->
-                                xs.join(x>2? "hello" : "world"),()->"boo!");
-
-        assertThat(res,equalTo("2hello3"));
-    }
-    @Test
-    public void when2(){
-
-        Integer res =   of(1,2,3).visit((x,xs)->x,()->10);
-        System.out.println(res);
-    }
-    @Test
-    public void whenNilOrNot(){
-        String res1=    of(1,2,3).visit((x,xs)-> x>2? "hello" : "world",()->"EMPTY");
-    }
-    @Test
-    public void whenNilOrNotJoinWithFirstElement(){
-
-
-        String res= of(1,2,3).visit((x,xs)-> xs.join(x>2? "hello" : "world"),()->"EMPTY");
-        assertThat(res,equalTo("2world3"));
-    }
 
     public static class BooleanProxy {
         public boolean value;

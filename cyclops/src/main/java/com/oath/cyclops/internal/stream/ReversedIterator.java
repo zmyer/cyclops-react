@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 import cyclops.reactive.ReactiveSeq;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 
 import lombok.AllArgsConstructor;
 
@@ -15,6 +15,11 @@ public class ReversedIterator<U> implements Streamable<U> {
     private final List<U> list;
 
     public List<U> getValue() {
+        return list;
+    }
+
+    @Override
+    public Iterable<U> getStreamable() {
         return list;
     }
 

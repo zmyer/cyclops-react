@@ -2,10 +2,10 @@ package com.oath.cyclops.internal.stream;
 
 import com.oath.cyclops.types.Unwrapable;
 
-import com.oath.cyclops.types.stream.HeadAndTail;
 import com.oath.cyclops.util.ExceptionSoftener;
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.companion.Streams;
+import cyclops.data.Seq;
 import cyclops.function.Monoid;
 import cyclops.function.Reducer;
 
@@ -29,7 +29,7 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
     }
 
     @Override
-    public boolean endsWithIterable(final Iterable<T> iterable) {
+    public boolean endsWith(final Iterable<T> iterable) {
         return Streams.endsWith(this, iterable);
     }
     @Override
@@ -67,49 +67,31 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
         return Streams.join(this, sep, start, end);
     }
 
-/**
-    public final <U extends Comparable<? super U>> Optional<T> minBy(final Function<? super T, ? extends U> function) {
 
-        return Streams.minBy(this, function);
-    }
-**/
     @Override
     public final Optional<T> min(final Comparator<? super T> comparator) {
         return Streams.min(this, comparator);
     }
 
-/**
-    public final <C extends Comparable<? super C>> Option<T> maxBy(final Function<? super T, ? extends C> f) {
-        return foldLeft(BinaryOperator.maxBy(new Comparator<T>() {
-            @Override
-            public int compare(T o1, T o2) {
-                return Comparator.<C>naturalOrder().compare(f.apply(o1),f.apply(o2));
-            }
-        }));
-    }
- **/
 
     @Override
     public final Optional<T> max(final Comparator<? super T> comparator) {
         return Streams.max(this, comparator);
     }
 
-    @Override
-    public final HeadAndTail<T> headAndTail() {
-        return Streams.headAndTail(this);
-    }
+
     @Override
     public final Optional<T> findAny() {
         return findFirst();
     }
 
     @Override
-    public final <R> R mapReduce(final Reducer<R,T> reducer) {
-        return reducer.mapReduce(unwrapStream());
+    public final <R> R foldMap(final Reducer<R,T> reducer) {
+        return reducer.foldMap(unwrapStream());
     }
 
     @Override
-    public final <R> R mapReduce(final Function<? super T, ? extends R> mapper, final Monoid<R> reducer) {
+    public final <R> R foldMap(final Function<? super T, ? extends R> mapper, final Monoid<R> reducer) {
         return reducer.foldLeft(map(mapper));
     }
 
@@ -137,13 +119,10 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
         return unwrapStream().reduce(identity, accumulator, combiner);
     }
 
-    @Override
-    public final ListX<T> reduce(final Stream<? extends Monoid<T>> reducers) {
-        return Streams.reduce(this, reducers);
-    }
+
 
     @Override
-    public final ListX<T> reduce(final Iterable<? extends Monoid<T>> reducers) {
+    public final Seq<T> reduce(final Iterable<? extends Monoid<T>> reducers) {
         return Streams.reduce(this, reducers);
     }
 
@@ -156,7 +135,7 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
     }
 
     public final <R> R foldLeftMapToType(final Reducer<R,T> reducer) {
-        return reducer.mapReduce(unwrapStream());
+        return reducer.foldMap(unwrapStream());
     }
 
     @Override
@@ -171,8 +150,8 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
     }
 
     @Override
-    public final <R> R foldRightMapToType(final Reducer<R,T> reducer) {
-        return reducer.mapReduce(reverse());
+    public final <R> R foldMapRight(final Reducer<R,T> reducer) {
+        return reducer.foldMap(reverse());
     }
 
 
@@ -196,16 +175,11 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
     }
 
     @Override
-    public final boolean startsWithIterable(final Iterable<T> iterable) {
+    public final boolean startsWith(final Iterable<T> iterable) {
         return Streams.startsWith(this, iterable);
 
     }
 
-    @Override
-    public final boolean startsWith(final Stream<T> stream2) {
-        return Streams.startsWith(this, stream2);
-
-    }
 
     @Override
     public final <R> ReactiveSeq<R> flatMapStream(final Function<? super T, BaseStream<? extends R, ?>> fn) {
@@ -213,9 +187,7 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
 
     }
 
-
     protected abstract <R> ReactiveSeq<R> createSeq(Stream<R> rStream);
-
 
 
     @Override
@@ -300,15 +272,21 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
         final long next = t.toNanos(time);
         Supplier<Function<? super T, ? extends T>> lazy = ()-> {
 
-            long[] last = {-1};
+            long[] last = {System.nanoTime()};
             int[] count = {0};
             return a-> {
-                if (++count[0] < x)
+                if (count[0] < x) {
+                    last[0] = System.nanoTime();
+                    count[0]++;
                     return a;
-                count[0] = 0;
-                final long sleepFor = next - (System.nanoTime() - last[0]);
+                }
+                count[0] = 1;
 
-                LockSupport.parkNanos(sleepFor);
+                long since = System.nanoTime() - last[0];
+                final long sleepFor = next - since;
+
+                if(sleepFor>0)
+                      LockSupport.parkNanos(sleepFor);
 
                 last[0] = System.nanoTime();
                 return a;
@@ -329,7 +307,7 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
         final long next = t.toNanos(time);
         Supplier<Function<? super T, ? extends T>> lazy = ()-> {
 
-            long[] last = {-1};
+            long[] last = {System.nanoTime()};
             return a-> {
                 final long sleepFor = next - (System.nanoTime() - last[0]);
 
@@ -387,7 +365,7 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
 
             }
         });
-        //return createSeq(Streams.fixedDelay(this, l, unit), this.reversible,split);
+
     }
 
     @Override
@@ -407,7 +385,6 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
             }
         });
 
-        // return createSeq(Streams.jitter(this, l), this.reversible,split);
     }
 
     @Override
@@ -415,10 +392,6 @@ public abstract class BaseExtendedStream<T> implements Unwrapable, ReactiveSeq<T
         return reverse().foldLeft(identity, accumulator);
     }
 
-    @Override
-    public boolean endsWith(final Stream<T> iterable) {
-        return Streams.endsWith(this, () -> iterable.iterator());
-    }
     @Override
     public T firstValue(T alt) {
         return findFirst().get();

@@ -12,20 +12,21 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import cyclops.reactive.collections.mutable.ListX;
 import cyclops.control.Option;
+import cyclops.data.HashMap;
+import cyclops.data.Vector;
+import cyclops.data.tuple.Tuple;
 import cyclops.data.tuple.Tuple2;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 public class StreamableSeqOpertationsTest {
 
 	<U> Streamable<U> of(U... array){
@@ -282,9 +283,9 @@ public class StreamableSeqOpertationsTest {
 
 		    @Test
 		    public void testGroupByEager() {
-		        Map<Integer, ListX<Integer>> map1 =of(1, 2, 3, 4).groupBy(i -> i % 2);
-		        assertEquals(asList(2, 4), map1.get(0));
-		        assertEquals(asList(1, 3), map1.get(1));
+		        HashMap<Integer, Vector<Integer>> map1 =of(1, 2, 3, 4).groupBy(i -> i % 2);
+		        assertEquals(Option.some(Vector.of(2, 4)), map1.get(0));
+		        assertEquals(Option.some(Vector.of(1, 3)), map1.get(1));
 		        assertEquals(2, map1.size());
 
 
@@ -322,8 +323,8 @@ public class StreamableSeqOpertationsTest {
 		    	//assertEquals(asList(), of().zipWithIndex().toList());
 		       // assertEquals(asList(tuple("a", 0L)), of("a").zip(of(0L)).toList());
 		        //assertEquals(asList(tuple("a", 0L)), of("a").zipWithIndex().toList());
-		    	assertEquals(asList(new Tuple2("a", 0L), new Tuple2("b", 1L)), of("a", "b").zipWithIndex().toList());
-		        assertEquals(asList(new Tuple2("a", 0L), new Tuple2("b", 1L), new Tuple2("c", 2L)), of("a", "b", "c").zipWithIndex().toList());
+		    	assertEquals(asList(Tuple.tuple("a", 0L), Tuple.tuple("b", 1L)), of("a", "b").zipWithIndex().toList());
+		        assertEquals(asList(Tuple.tuple("a", 0L), Tuple.tuple("b", 1L), Tuple.tuple("c", 2L)), of("a", "b", "c").zipWithIndex().toList());
 		    }
 
 
@@ -438,6 +439,7 @@ public class StreamableSeqOpertationsTest {
 			      	}
 		    }
 
+
 		    @Test
 		    public void testSplitAtHead() {
 		        assertEquals(Option.none(), of().splitAtHead()._1());
@@ -470,7 +472,7 @@ public class StreamableSeqOpertationsTest {
 
 		    @Test
 		    public void testUnzip() {
-		        Supplier<Streamable<Tuple2<Integer, String>>> s = () -> of(new Tuple2(1, "a"), new Tuple2(2, "b"), new Tuple2(3, "c"));
+		        Supplier<Streamable<Tuple2<Integer, String>>> s = () -> of(Tuple.tuple(1, "a"), Tuple.tuple(2, "b"), Tuple.tuple(3, "c"));
 
 		        Tuple2<Streamable<Integer>, Streamable<String>> u1 = Streamable.unzip(s.get());
 		        assertThat(u1._1().toList(),equalTo(asList(1, 2, 3)));

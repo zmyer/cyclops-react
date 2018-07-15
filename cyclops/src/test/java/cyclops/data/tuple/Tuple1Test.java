@@ -4,8 +4,6 @@ import cyclops.control.Trampoline;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.concurrent.TimeUnit;
-
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.*;
@@ -61,15 +59,7 @@ public class Tuple1Test {
 
 
 
-    @Test
-    public void retry() throws Exception {
-        assertThat(t1.retry(i->i+1),equalTo(Tuple.tuple(11)));
-        assertThat(t1.retry(i->{
-            if(called++==0)
-                throw new RuntimeException("boo!");
-        return i+1;
-        }),equalTo(Tuple.tuple(11)));
-    }
+
 
     @Test
     public void eager() throws Exception {
@@ -92,15 +82,7 @@ public class Tuple1Test {
         assertThat(called,equalTo(1));
     }
 
-    @Test
-    public void retry1() throws Exception {
-        assertThat(t1.retry(i->i+1,5,10, TimeUnit.MILLISECONDS),equalTo(Tuple.tuple(11)));
-        assertThat(t1.retry(i->{
-            if(called++==0)
-                throw new RuntimeException("boo!");
-            return i+1;
-        },5,10, TimeUnit.MILLISECONDS),equalTo(Tuple.tuple(11)));
-    }
+
 
     @Test
     public void lazyMap() throws Exception {
@@ -145,7 +127,7 @@ public class Tuple1Test {
 
     @Test
     public void visit() throws Exception {
-        assertThat(t1.visit(i->i+1),equalTo(11));
+        assertThat(t1.fold(i->i+1),equalTo(11));
     }
 
     @Test
@@ -187,12 +169,6 @@ public class Tuple1Test {
     private Trampoline<Integer> sum(int times, int sum){
         return times ==0 ?  Trampoline.done(sum) : Trampoline.more(()->sum(times-1,sum+times));
     }
-    @Test
-    public void testTrampoline() {
-        assertThat(t1.trampoline(n ->sum(10,n)),equalTo(Tuple1.of(65)));
-    }
-
-
 
 
 

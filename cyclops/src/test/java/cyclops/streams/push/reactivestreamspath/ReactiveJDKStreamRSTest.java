@@ -1,9 +1,9 @@
 package cyclops.streams.push.reactivestreamspath;
 
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.Spouts;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -84,14 +84,14 @@ public class ReactiveJDKStreamRSTest {
 	@Test
 	public void testDistinctReactiveSeq(){
 		List<String> names = Arrays.asList("Java", "C");
-		ListX<String> d = ReactiveSeq.fromIterable(names).distinct(n -> n + ":" + n).toListX();
+		List<String> d = ReactiveSeq.fromIterable(names).distinct(n -> n + ":" + n).toList();
 		assertThat(d.size(),is(2));
 	}
 
 	@Test
 	public void testDistinctReactiveSeqMultipleDuplicates(){
 		List<String> names = Arrays.asList("Java", "C", "Java", "Java","java", "java");
-		ListX<String> d = ReactiveSeq.fromIterable(names).distinct(n -> n + ":" + n).toListX();
+		List<String> d = ReactiveSeq.fromIterable(names).distinct(n -> n + ":" + n).toList();
 		System.out.println(d);
 		assertThat(d.size(),is(3));
 	}
@@ -115,11 +115,11 @@ public class ReactiveJDKStreamRSTest {
     }
 	@Test
 	public void testMax(){
-		assertThat(of(1,2,3,4,5).max((t1,t2) -> t1-t2).get(),equalTo(5));
+		assertThat(of(1,2,3,4,5).maximum((t1, t2) -> t1-t2).orElse(-1),equalTo(5));
 	}
 	@Test
 	public void testMin(){
-		assertThat(of(1,2,3,4,5).min((t1,t2) -> t1-t2).get(),equalTo(1));
+		assertThat(of(1,2,3,4,5).minimum((t1, t2) -> t1-t2).orElse(-1),equalTo(1));
 	}
 
 	@Test

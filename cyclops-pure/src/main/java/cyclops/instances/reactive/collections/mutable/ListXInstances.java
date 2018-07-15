@@ -1,6 +1,7 @@
 package cyclops.instances.reactive.collections.mutable;
 
-import com.oath.cyclops.hkt.DataWitness.list;
+import static com.oath.cyclops.data.ReactiveWitness.*;
+
 import com.oath.cyclops.hkt.Higher;
 import cyclops.arrow.Cokleisli;
 import cyclops.arrow.Kleisli;
@@ -309,7 +310,8 @@ public class ListXInstances {
 
       Higher<C2,ListX<T>> identity = ap.unit(ListX.empty());
 
-      BiFunction<Higher<C2,ListX<T>>,Higher<C2,T>,Higher<C2,ListX<T>>> combineToList =   (acc,next) -> ap.apBiFn(ap.unit((a,b) -> { a.add(b); return a;}),acc,next);
+      BiFunction<Higher<C2,ListX<T>>,Higher<C2,T>,Higher<C2,ListX<T>>> combineToList =   (acc,next) -> ap.apBiFn(ap.unit((a,b) -> {
+          a.add(b); return a;}),acc,next);
 
       BinaryOperator<Higher<C2,ListX<T>>> combineLists = (a, b)-> ap.apBiFn(ap.unit((l1, l2)-> { l1.addAll(l2); return l1;}),a,b); ;
 

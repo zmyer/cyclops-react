@@ -1,12 +1,16 @@
 package cyclops.data;
 
+import cyclops.control.Maybe;
 import cyclops.data.base.BAMT;
 import cyclops.data.tuple.Tuple2;
 import cyclops.control.Option;
 import cyclops.data.basetests.BaseImmutableListTest;
+import org.hamcrest.MatcherAssert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -21,6 +25,27 @@ public class VectorTest extends BaseImmutableListTest {
     @Override
     protected <T> Vector<T> fromStream(Stream<T> s) {
         return Vector.fromStream(s);
+    }
+
+    @Test
+    public void equalsAndHash(){
+        LinkedList<Integer> l = new LinkedList<>();
+        ArrayList<Integer> al = new ArrayList<>();
+
+        l.add(1);
+        al.add(1);
+        assertThat(l,equalTo(al));
+        assertThat(l.hashCode(),equalTo(al.hashCode()));
+
+
+        assertThat(Vector.of(1,2),equalTo(Seq.of(1,2)));
+        assertThat(Vector.of(1,2).hashCode(),equalTo(Seq.of(1,2).hashCode()));
+
+        assertThat(Vector.of(1,2),equalTo(LazySeq.of(1,2)));
+        assertThat(Vector.of(1,2).hashCode(),equalTo(LazySeq.of(1,2).hashCode()));
+
+        assertThat(Vector.of(1,2),equalTo(IntMap.of(1,2)));
+        assertThat(Vector.of(1,2).hashCode(),equalTo(IntMap.of(1,2).hashCode()));
     }
 
     @Override
@@ -228,7 +253,6 @@ public class VectorTest extends BaseImmutableListTest {
         }
 
     }
-
 
 
 

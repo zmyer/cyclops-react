@@ -1,16 +1,13 @@
 package cyclops.data;
 
 
+import com.oath.cyclops.types.persistent.PersistentCollection;
 import com.oath.cyclops.types.persistent.PersistentIndexed;
 import com.oath.cyclops.types.persistent.PersistentList;
 import com.oath.cyclops.hkt.Higher;
-import com.oath.cyclops.types.foldable.Evaluation;
-import cyclops.reactive.collections.immutable.VectorX;
-import cyclops.reactive.collections.mutable.ListX;
-import cyclops.control.Option;
-import cyclops.control.Trampoline;
-import com.oath.cyclops.hkt.DataWitness.intMap;
 import cyclops.control.Eval;
+import cyclops.control.Option;
+import com.oath.cyclops.hkt.DataWitness.intMap;
 import cyclops.data.base.IntPatriciaTrie;
 import cyclops.data.tuple.Tuple3;
 import cyclops.data.tuple.Tuple4;
@@ -27,7 +24,6 @@ import org.reactivestreams.Publisher;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.Stream;
 
@@ -159,14 +155,16 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
     }
 
     @Override
+    public IntMap<T> append(T value) {
+        return plus(value);
+    }
+
+    @Override
     public IntMap<T> prependAll(Iterable<? extends T> value) {
         return unitStream(stream().prependAll(value));
     }
 
-    @Override
-    public IntMap<T> appendAll(T value) {
-        return this.plus(value);
-    }
+
 
     @Override
     public IntMap<T> appendAll(Iterable<? extends T> value) {
@@ -210,17 +208,11 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
         return size==0;
     }
 
-    public VectorX<T> vectorX(){
-        return stream().to().vectorX(Evaluation.LAZY);
-    }
+
     public ReactiveSeq<T> stream(){
         return intMap.stream();
     }
 
-    @Override
-    public <R> IntMap<R> retry(Function<? super T, ? extends R> fn) {
-        return (IntMap<R>) ImmutableList.super.retry(fn);
-    }
   @Override
   public <R1, R2, R3, R> IntMap<R> forEach4(Function<? super T, ? extends Iterable<R1>> iterable1, BiFunction<? super T, ? super R1, ? extends Iterable<R2>> iterable2, Function3<? super T, ? super R1, ? super R2, ? extends Iterable<R3>> iterable3, Function4<? super T, ? super R1, ? super R2, ? super R3, ? extends R> yieldingFunction) {
     return (IntMap< R>) ImmutableList.super.forEach4(iterable1,iterable2,iterable3,yieldingFunction);
@@ -250,10 +242,7 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
   public <R1, R> IntMap<R> forEach2(Function<? super T, ? extends Iterable<R1>> iterable1, BiFunction<? super T, ? super R1, Boolean> filterFunction, BiFunction<? super T, ? super R1, ? extends R> yieldingFunction) {
     return (IntMap< R>) ImmutableList.super.forEach2(iterable1,filterFunction,yieldingFunction);
   }
-    @Override
-    public <R> IntMap<R> retry(Function<? super T, ? extends R> fn, int retries, long delay, TimeUnit timeUnit) {
-        return (IntMap<R>) ImmutableList.super.retry(fn,retries,delay,timeUnit);
-    }
+
     @Override
     public IntMap<T> filter(Predicate<? super T> fn) {
         return unitStream(stream().filter(fn));
@@ -314,10 +303,6 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
         return (IntMap<T>)ImmutableList.super.peek(c);
     }
 
-    @Override
-    public <R> IntMap<R> trampoline(Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-        return (IntMap<R>)ImmutableList.super.trampoline(mapper);
-    }
 
     @Override
     public IntMap<T> removeStream(Stream<? extends T> stream) {
@@ -384,10 +369,6 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
         return (IntMap<R>)ImmutableList.super.zip4(second,third,fourth,fn);
     }
 
-    @Override
-    public <U> IntMap<U> unitIterator(Iterator<U> it) {
-        return fromIterable(()->it);
-    }
 
     @Override
     public IntMap<T> combine(BiPredicate<? super T, ? super T> predicate, BinaryOperator<T> op) {
@@ -440,28 +421,28 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
     }
 
     @Override
-    public IntMap<VectorX<T>> sliding(int windowSize) {
-        return (IntMap<VectorX<T>>) ImmutableList.super.sliding(windowSize);
+    public IntMap<Seq<T>> sliding(int windowSize) {
+        return (IntMap<Seq<T>>) ImmutableList.super.sliding(windowSize);
     }
 
     @Override
-    public IntMap<VectorX<T>> sliding(int windowSize, int increment) {
-        return (IntMap<VectorX<T>>) ImmutableList.super.sliding(windowSize,increment);
+    public IntMap<Seq<T>> sliding(int windowSize, int increment) {
+        return (IntMap<Seq<T>>) ImmutableList.super.sliding(windowSize,increment);
     }
 
     @Override
-    public <C extends Collection<? super T>> IntMap<C> grouped(int size, Supplier<C> supplier) {
+    public <C extends PersistentCollection<? super T>> IntMap<C> grouped(int size, Supplier<C> supplier) {
         return (IntMap<C>) ImmutableList.super.grouped(size,supplier);
     }
 
     @Override
-    public IntMap<ListX<T>> groupedUntil(Predicate<? super T> predicate) {
-        return (IntMap<ListX<T>>) ImmutableList.super.groupedUntil(predicate);
+    public IntMap<Vector<T>> groupedUntil(Predicate<? super T> predicate) {
+        return (IntMap<Vector<T>>) ImmutableList.super.groupedUntil(predicate);
     }
 
     @Override
-    public IntMap<ListX<T>> groupedStatefullyUntil(BiPredicate<ListX<? super T>, ? super T> predicate) {
-        return (IntMap<ListX<T>>) ImmutableList.super.groupedStatefullyUntil(predicate);
+    public IntMap<Vector<T>> groupedUntil(BiPredicate<Vector<? super T>, ? super T> predicate) {
+        return (IntMap<Vector<T>>) ImmutableList.super.groupedUntil(predicate);
     }
 
     @Override
@@ -470,23 +451,23 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
     }
 
     @Override
-    public IntMap<ListX<T>> groupedWhile(Predicate<? super T> predicate) {
-        return (IntMap<ListX<T>>) ImmutableList.super.groupedWhile(predicate);
+    public IntMap<Vector<T>> groupedWhile(Predicate<? super T> predicate) {
+        return (IntMap<Vector<T>>) ImmutableList.super.groupedWhile(predicate);
     }
 
     @Override
-    public <C extends Collection<? super T>> IntMap<C> groupedWhile(Predicate<? super T> predicate, Supplier<C> factory) {
+    public <C extends PersistentCollection<? super T>> IntMap<C> groupedWhile(Predicate<? super T> predicate, Supplier<C> factory) {
         return (IntMap<C>) ImmutableList.super.groupedWhile(predicate,factory);
     }
 
     @Override
-    public <C extends Collection<? super T>> IntMap<C> groupedUntil(Predicate<? super T> predicate, Supplier<C> factory) {
+    public <C extends PersistentCollection<? super T>> IntMap<C> groupedUntil(Predicate<? super T> predicate, Supplier<C> factory) {
         return (IntMap<C>) ImmutableList.super.groupedUntil(predicate,factory);
     }
 
     @Override
-    public IntMap<ListX<T>> grouped(int groupSize) {
-        return (IntMap<ListX<T>>) ImmutableList.super.grouped(groupSize);
+    public IntMap<Vector<T>> grouped(int groupSize) {
+        return (IntMap<Vector<T>>) ImmutableList.super.grouped(groupSize);
     }
 
     @Override
@@ -640,15 +621,6 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
         return (IntMap<T>) ImmutableList.super.insertStreamAt(pos,stream);
     }
 
-    @Override
-    public IntMap<T> recover(Function<? super Throwable, ? extends T> fn) {
-        return this;
-    }
-
-    @Override
-    public <EX extends Throwable> IntMap<T> recover(Class<EX> exceptionClass, Function<? super EX, ? extends T> fn) {
-        return this;
-    }
 
 
     @Override
@@ -794,14 +766,16 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
         }
 
         @Override
+        public ImmutableList<T> append(T value) {
+            return of(value);
+        }
+
+        @Override
         public ImmutableList<T> prependAll(Iterable<? extends T> value) {
             return empty();
         }
 
-        @Override
-        public ImmutableList<T> appendAll(T value) {
-            return empty();
-        }
+
 
         @Override
         public ImmutableList<T> appendAll(Iterable<? extends T> value) {
@@ -900,7 +874,7 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
 
     @Override
     public String toString(){
-        return stream().join(",","[","]");
+        return stream().join(", ","[","]");
     }
     private int calcHash() {
         int hashCode = 1;
@@ -942,7 +916,7 @@ public class IntMap<T> implements ImmutableList<T>,Serializable,Higher<intMap,T>
             IntMap<T> res = empty();
             for (int i = 0; i < size; i++) {
                 T n = (T) s.readObject();
-                res = res.appendAll(n);
+                res =  res.append(n);
             }
             v=res;
         }

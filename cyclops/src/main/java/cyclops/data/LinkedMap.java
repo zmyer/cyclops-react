@@ -3,7 +3,6 @@ package cyclops.data;
 
 import com.oath.cyclops.types.persistent.PersistentMap;
 import com.oath.cyclops.hkt.Higher2;
-import cyclops.reactive.collections.immutable.PersistentMapX;
 import cyclops.control.Option;
 import cyclops.control.Trampoline;
 import cyclops.function.Function3;
@@ -16,6 +15,7 @@ import cyclops.data.tuple.Tuple;
 import cyclops.data.tuple.Tuple2;
 
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.*;
@@ -37,6 +37,13 @@ public final class LinkedMap<K,V> implements ImmutableMap<K,V>, Higher2<linkedHa
     public static <K,V> LinkedMap<K,V> of(K k1,V v1,K k2, V v2){
         LinkedMap<K,V> res = empty();
         return res.put(k1,v1).put(k2,v2);
+    }
+    public static <K,V> LinkedMap<K,V> fromMap(java.util.Map<K,V> source){
+        LinkedMap<K,V> res = empty();
+        for(Map.Entry<K,V> entry : source.entrySet()){
+            res = res.put(entry.getKey(),entry.getValue());
+        }
+        return res;
     }
 
     public static <K,V> LinkedMap<K,V> fromStream(Stream<Tuple2<K,V>> stream){
@@ -135,11 +142,6 @@ public final class LinkedMap<K,V> implements ImmutableMap<K,V>, Higher2<linkedHa
         return map.contains(t);
     }
 
-    @Override
-    public PersistentMapX<K, V> persistentMapX() {
-        return stream().to().persistentMapX(k -> k._1(), v -> v._2());
-    }
-
     public LinkedMap<K, V> put(K key, V value) {
         Vector<Tuple2<K, V>> newOrder = get(key).map(v -> order.replaceFirst(Tuple.tuple(key, v), Tuple.tuple(key, value)))
                 .orElseGet(() -> order.plus(Tuple.tuple(key, value)));
@@ -159,8 +161,12 @@ public final class LinkedMap<K,V> implements ImmutableMap<K,V>, Higher2<linkedHa
         ImmutableMap<K,V> res = HashMap.empty();
         Vector<Tuple2<K,V>> ordering =order;
         for(Tuple2<K,V> t : narrow){
+            if(containsKey(t._1()))
+                ordering = ordering.replaceFirst(Tuple.tuple(t._1(),getOrElse(t._1(),null)),t);
+            else
+                ordering =ordering.plus(t);
             res = res.put(t);
-            ordering= ordering.plus(t);
+
         }
         return new LinkedMap<K,V>(res,ordering);
     }
@@ -205,20 +211,7 @@ public final class LinkedMap<K,V> implements ImmutableMap<K,V>, Higher2<linkedHa
     return (LinkedMap<K, V>)ImmutableMap.super.peek(c);
   }
 
-  @Override
-  public <R> LinkedMap<K, R> trampoline(Function<? super V, ? extends Trampoline<? extends R>> mapper) {
-    return (LinkedMap<K, R>)ImmutableMap.super.trampoline(mapper);
-  }
 
-  @Override
-  public <R> LinkedMap<K, R> retry(Function<? super V, ? extends R> fn) {
-    return (LinkedMap<K, R>)ImmutableMap.super.retry(fn);
-  }
-
-  @Override
-  public <R> LinkedMap<K, R> retry(Function<? super V, ? extends R> fn, int retries, long delay, TimeUnit timeUnit) {
-    return (LinkedMap<K, R>)ImmutableMap.super.retry(fn,retries,delay,timeUnit);
-  }
 
   @Override
   public LinkedMap<K, V> bipeek(Consumer<? super K> c1, Consumer<? super V> c2) {
@@ -227,10 +220,6 @@ public final class LinkedMap<K,V> implements ImmutableMap<K,V>, Higher2<linkedHa
 
 
 
-  @Override
-  public <R1, R2> LinkedMap<R1, R2> bitrampoline(Function<? super K, ? extends Trampoline<? extends R1>> mapper1, Function<? super V, ? extends Trampoline<? extends R2>> mapper2) {
-    return (LinkedMap<R1, R2>)ImmutableMap.super.bitrampoline(mapper1,mapper2);
-  }
 
   @Override
   public LinkedMap<K, V> onEmpty(Tuple2<K, V> value) {

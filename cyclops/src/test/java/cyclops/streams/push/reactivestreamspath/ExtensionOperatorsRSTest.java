@@ -3,12 +3,12 @@ package cyclops.streams.push.reactivestreamspath;
 
 import cyclops.companion.Semigroups;
 import cyclops.companion.Streams;
-import cyclops.reactive.collections.mutable.ListX;
+
 import cyclops.control.Maybe;
 
 import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.Spouts;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
@@ -33,7 +33,7 @@ public class ExtensionOperatorsRSTest {
     public void combine(){
         assertThat(Spouts.of(1,1,2,3)
                    .combine((a, b)->a.equals(b),Semigroups.intSum)
-                   .to(Streamable::fromStream).toListX(),equalTo(ListX.of(4,3)));
+                   .to(Streamable::fromStream).toList(),equalTo(Arrays.asList(4,3)));
 
     }
 	@Test
@@ -251,82 +251,52 @@ public class ExtensionOperatorsRSTest {
 	@Test
 	public void endsWith(){
 		assertTrue(Spouts.of(1,2,3,4,5,6)
-				.endsWithIterable(Arrays.asList(5,6)));
+				.endsWith(Arrays.asList(5,6)));
 	}
 	@Test
 	public void endsWithFalse(){
 		assertFalse(Spouts.of(1,2,3,4,5,6)
-				.endsWithIterable(Arrays.asList(5,6,7)));
+				.endsWith(Arrays.asList(5,6,7)));
 	}
 	@Test
 	public void endsWithToLong(){
 		assertFalse(Spouts.of(1,2,3,4,5,6)
-				.endsWithIterable(Arrays.asList(0,1,2,3,4,5,6)));
+				.endsWith(Arrays.asList(0,1,2,3,4,5,6)));
 	}
 	@Test
 	public void endsWithEmpty(){
 		assertTrue(Spouts.of(1,2,3,4,5,6)
-				.endsWithIterable(Arrays.asList()));
+				.endsWith(Arrays.asList()));
 	}
 	@Test
 	public void endsWithWhenEmpty(){
 		assertFalse(Spouts.of()
-				.endsWithIterable(Arrays.asList(1,2,3,4,5,6)));
+				.endsWith(Arrays.asList(1,2,3,4,5,6)));
 	}
 	@Test
 	public void endsWithBothEmpty(){
 		assertTrue(Spouts.<Integer>of()
-				.endsWithIterable(Arrays.asList()));
+				.endsWith(Arrays.asList()));
 	}
-	@Test
-	public void endsWithStream(){
-		assertTrue(Spouts.of(1,2,3,4,5,6)
-				.endsWith(Stream.of(5,6)));
-	}
-	@Test
-	public void endsWithFalseStream(){
-		assertFalse(Spouts.of(1,2,3,4,5,6)
-				.endsWith(Stream.of(5,6,7)));
-	}
-	@Test
-	public void endsWithToLongStream(){
-		assertFalse(Spouts.of(1,2,3,4,5,6)
-				.endsWith(Stream.of(0,1,2,3,4,5,6)));
-	}
-	@Test
-	public void endsWithEmptyStream(){
-		assertTrue(Spouts.of(1,2,3,4,5,6)
-				.endsWith(Stream.of()));
-	}
-	@Test
-	public void endsWithWhenEmptyStream(){
-		assertFalse(Spouts.of()
-				.endsWith(Stream.of(1,2,3,4,5,6)));
-	}
-	@Test
-	public void endsWithBothEmptyStream(){
-		assertTrue(Spouts.<Integer>of()
-				.endsWith(Stream.of()));
-	}
+
 
 	@Test
 	public void streamable(){
-		Streamable<Integer> repeat = Spouts.of(1,2,3,4,5,6)
-												.map(i->i*2).to()
-												.streamable();
+		Streamable<Integer> repeat = Streamable.fromStream(Spouts.of(1,2,3,4,5,6)
+												.map(i->i*2));
 
-		assertThat(repeat.reactiveSeq().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
-		assertThat(repeat.reactiveSeq().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
+		assertThat(repeat.stream().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
+		assertThat(repeat.stream().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
 	}
 
 	@Test
 	public void concurrentLazyStreamable(){
 		Streamable<Integer> repeat = Spouts.of(1,2,3,4,5,6)
 												.map(i->i*2).to()
-												.lazyStreamableSynchronized();
+												.streamable();
 
-		assertThat(repeat.reactiveSeq().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
-		assertThat(repeat.reactiveSeq().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
+		assertThat(repeat.stream().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
+		assertThat(repeat.stream().toList(),equalTo(Arrays.asList(2,4,6,8,10,12)));
 	}
 	@Test
 	public void splitBy(){
@@ -346,7 +316,7 @@ public class ExtensionOperatorsRSTest {
 	public void testLazyCollection(){
 		Collection<Integer> col = Spouts.of(1,2,3,4,5)
 											.peek(System.out::println).to()
-											.lazyCollectionSynchronized();
+											.lazyCollection();
 		System.out.println("takeOne!");
 		col.forEach(System.out::println);
 		assertThat(col.size(),equalTo(5));

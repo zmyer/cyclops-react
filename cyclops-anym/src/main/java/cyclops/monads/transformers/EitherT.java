@@ -2,10 +2,9 @@ package cyclops.monads.transformers;
 
 import com.oath.cyclops.types.Filters;
 import com.oath.cyclops.types.MonadicValue;
-import com.oath.anym.transformers.NonEmptyTransformer;
+import com.oath.cyclops.anym.transformers.NonEmptyTransformer;
 import com.oath.cyclops.types.foldable.To;
 import com.oath.cyclops.types.functor.Transformable;
-import cyclops.control.Trampoline;
 import cyclops.control.Either;
 import cyclops.monads.AnyM;
 import cyclops.monads.WitnessType;
@@ -75,7 +74,7 @@ public final class EitherT<W extends WitnessType<W>, ST,T> extends NonEmptyTrans
     @Override
     public EitherT<W,ST,T> filter(final Predicate<? super T> test) {
         return of(run.map(f->f.map(in->Tuple.tuple(in,test.test(in))))
-                     .filter( f->f.visit(t->t._2(),()->false) )
+                     .filter( f->f.fold(t->t._2(),()->false) )
                      .map( f->f.map(in->in._1())));
     }
 
@@ -259,8 +258,8 @@ public final class EitherT<W extends WitnessType<W>, ST,T> extends NonEmptyTrans
 
 
 
-    public <R> EitherT<W,ST,R> unitIterator(final Iterator<R> it) {
-        return of(run.unitIterator(it)
+    public <R> EitherT<W,ST,R> unitIterable(final Iterable<R> it) {
+        return of(run.unitIterable(it)
                      .map(i -> Either.right(i)));
     }
 
@@ -329,11 +328,6 @@ public final class EitherT<W extends WitnessType<W>, ST,T> extends NonEmptyTrans
         return (EitherT<W,ST,T>)Filters.super.notNull();
     }
 
-
-    @Override
-    public <R> EitherT<W,ST,R> trampoline(Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-        return (EitherT<W,ST,R>)super.trampoline(mapper);
-    }
 
 
 

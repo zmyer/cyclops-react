@@ -1,19 +1,19 @@
 package cyclops.monads.anym.value;
 
 
-import com.oath.anym.AnyMValue;
-import com.oath.anym.AnyMValue2;
+import com.oath.cyclops.anym.AnyMValue;
+import com.oath.cyclops.anym.AnyMValue2;
+import com.oath.cyclops.ReactiveConvertableSequence;
 import com.oath.cyclops.util.box.Mutable;
 import cyclops.companion.Semigroups;
 import cyclops.control.Future;
+import cyclops.data.Seq;
 import cyclops.futurestream.LazyReact;
 import cyclops.control.*;
-import cyclops.control.Eval;
 import cyclops.control.Maybe;
-import cyclops.control.Trampoline;
 import cyclops.function.Monoid;
 import cyclops.companion.Reducers;
-import cyclops.companion.FutureStreamSemigroups;
+import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.collections.mutable.ListX;
 
 import cyclops.companion.Streams;
@@ -46,27 +46,10 @@ public abstract class BaseAnyMValueTest<W extends WitnessType<W>> {
 		assertThat(none.toMaybe(),equalTo(Maybe.nothing()));
 	}
 
-	@Test
-    public void nest(){
-       assertThat(just.nest().map(m->m.orElse(-2000)), Matchers.equivalent(just));
-
-    }
-    @Test
-    public void coFlatMap(){
-
-        assertThat(just.coflatMap(m-> m.isPresent()? m.orElse(-4000) : 50), Matchers.equivalent(just));
-        assertThat(none.coflatMap(m-> m.isPresent()? m.orElse(-5000) : just.orElse(-4000)), Matchers.equivalent(just));
-    }
     @Test
     public void combine(){
 
         Monoid<Integer> add = Monoid.of(0, Semigroups.intSum);
-/**
-        assertThat(none.combineEager(add,just).toTry(),equalTo(Try.success(0)));
-        assertThat(none.combineEager(add,none).toTry(),equalTo(Try.success(0)));
-        assertThat(just.combineEager(add,just).toTry(),equalTo(Try.success(20)));
- **/
-          //  just.combineEager(add,none).printOut();
         System.out.println("None " + none);
 	    assertThat(just.combineEager(add,none), Matchers.equivalent(just));
 
@@ -149,16 +132,16 @@ public abstract class BaseAnyMValueTest<W extends WitnessType<W>> {
 
 	@Test
 	public void testWhenFunctionOfQsuperTQextendsRSupplierOfQextendsR() {
-		assertThat(just.visit(i->i+1,()->20),equalTo(11));
-		assertThat(none.visit(i->i+1,()->20),equalTo(20));
+		assertThat(just.fold(i->i+1,()->20),equalTo(11));
+		assertThat(none.fold(i->i+1,()->20),equalTo(20));
 	}
 
 
 
 	@Test
 	public void testStream() {
-		assertThat(just.stream().toListX(),equalTo(ListX.of(10)));
-		assertThat(none.stream().toListX(),equalTo(ListX.of()));
+		assertThat(just.stream().to(ReactiveConvertableSequence::converter).listX(),equalTo(ListX.of(10)));
+		assertThat(none.stream().to(ReactiveConvertableSequence::converter).listX(),equalTo(ListX.of()));
 	}
 
 	@Test
@@ -168,13 +151,13 @@ public abstract class BaseAnyMValueTest<W extends WitnessType<W>> {
 
 	@Test
 	public void testConvertTo() {
-		Stream<Integer> toStream = just.visit(m->Stream.of(m),()->Stream.of());
+		Stream<Integer> toStream = just.fold(m->Stream.of(m),()->Stream.of());
 		assertThat(toStream.collect(Collectors.toList()),equalTo(ListX.of(10)));
 	}
 
 	@Test
 	public void testConvertToAsync() {
-		Future<Stream<Integer>> async = Future.of(()->just.visit(f->Stream.of((int)f),()->Stream.of()));
+		Future<Stream<Integer>> async = Future.of(()->just.fold(f->Stream.of((int)f),()->Stream.of()));
 
 		assertThat(async.orElse(Stream.empty()).collect(Collectors.toList()),equalTo(ListX.of(10)));
 	}
@@ -192,7 +175,7 @@ public abstract class BaseAnyMValueTest<W extends WitnessType<W>> {
 
 	@Test
 	public void testMapReduceReducerOfE() {
-		assertThat(just.mapReduce(Reducers.toCountInt()),equalTo(1));
+		assertThat(just.foldMap(Reducers.toCountInt()),equalTo(1));
 	}
 
 
@@ -323,39 +306,39 @@ public abstract class BaseAnyMValueTest<W extends WitnessType<W>> {
 
 	@Test
 	public void testMapReduceFunctionOfQsuperTQextendsRMonoidOfR() {
-		assertThat(just.mapReduce(s->s.toString(), Monoid.of("", Semigroups.stringJoin(","))),equalTo(",10"));
+		assertThat(just.foldMap(s->s.toString(), Monoid.of("", Semigroups.stringJoin(","))),equalTo(",10"));
 	}
 
 	@Test
 	public void testReduceMonoidOfT() {
-		assertThat(just.reduce(Monoid.of(1, Semigroups.intMult)),equalTo(10));
+		assertThat(just.foldLeft(Monoid.of(1, Semigroups.intMult)),equalTo(10));
 	}
 
 	@Test
 	public void testReduceBinaryOperatorOfT() {
-		assertThat(just.reduce((a,b)->a+b),equalTo(Optional.of(10)));
+		assertThat(just.foldLeft((a,b)->a+b),equalTo(Option.of(10)));
 	}
 
 	@Test
 	public void testReduceTBinaryOperatorOfT() {
-		assertThat(just.reduce(10,(a,b)->a+b),equalTo(20));
+		assertThat(just.foldLeft(10,(a,b)->a+b),equalTo(20));
 	}
 
 	@Test
 	public void testReduceUBiFunctionOfUQsuperTUBinaryOperatorOfU() {
-		assertThat(just.reduce(11,(a,b)->a+b,(a,b)->a*b),equalTo(21));
+		assertThat(just.foldLeft(11,(a,b)->a+b,(a,b)->a*b),equalTo(21));
 	}
 
 	@Test
 	public void testReduceStreamOfQextendsMonoidOfT() {
-		ListX<Integer> countAndTotal = just.reduce(Stream.of(Reducers.toCountInt(),Reducers.toTotalInt()));
-		assertThat(countAndTotal,equalTo(ListX.of(1,10)));
+		Seq<Integer> countAndTotal = just.foldLeft(ReactiveSeq.of(Reducers.toCountInt(),Reducers.toTotalInt()));
+		assertThat(countAndTotal,equalTo(Seq.of(1,10)));
 	}
 
 	@Test
 	public void testReduceIterableOfReducerOfT() {
-		ListX<Integer> countAndTotal = just.reduce(Arrays.asList(Reducers.toCountInt(),Reducers.toTotalInt()));
-		assertThat(countAndTotal,equalTo(ListX.of(1,10)));
+        Seq<Integer> countAndTotal = just.foldLeft(Arrays.asList(Reducers.toCountInt(),Reducers.toTotalInt()));
+		assertThat(countAndTotal,equalTo(Seq.of(1,10)));
 	}
 
 
@@ -374,8 +357,8 @@ public abstract class BaseAnyMValueTest<W extends WitnessType<W>> {
 
 	@Test
 	public void testWhenFunctionOfQsuperMaybeOfTQextendsR() {
-		assertThat(just.visit(s->"hello", ()->"world"),equalTo("hello"));
-		assertThat(none.visit(s->"hello", ()->"world"),equalTo("world"));
+		assertThat(just.fold(s->"hello", ()->"world"),equalTo("hello"));
+		assertThat(none.fold(s->"hello", ()->"world"),equalTo("world"));
 	}
 
 
@@ -449,13 +432,6 @@ public abstract class BaseAnyMValueTest<W extends WitnessType<W>> {
 		assertThat(capture.get(),equalTo(10));
 	}
 
-	private Trampoline<Integer> sum(int times, int sum){
-		return times ==0 ?  Trampoline.done(sum) : Trampoline.more(()->sum(times-1,sum+times));
-	}
-	@Test
-	public void testTrampoline() {
-		assertThat(just.trampoline(n ->sum(10,n)).toMaybe(),equalTo(Maybe.of(65)));
-	}
 
 
 

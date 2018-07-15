@@ -6,14 +6,12 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.junit.Test;
 
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 
 import lombok.val;
 
@@ -39,69 +37,7 @@ public class AsStreamableTest {
 		assertThat(result1,equalTo(result2));
 		assertThat(result1,equalTo(result3));
 	}
-	volatile boolean failed=false;
-	@Test
-	public void concurrentLazy() throws InterruptedException{
-		Streamable<Integer> streamable =   Streamable.synchronizedFromStream(IntStream.range(0,1000).boxed());
 
-		for(int i=0;i<100;i++){
-			CountDownLatch init = new CountDownLatch(4);
 
-			Thread t1 = new Thread( ()->{
-				init.countDown();
-				try {
-					init.await();
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				try{
-					streamable.stream().forEach(System.out::println);
-				}catch(Exception e){
-					failed=true;
-					fail(e.getMessage());
-				}
-				});
-			Thread t2 = new Thread( ()->{
-			init.countDown();
-			try {
-				init.await();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			try{
-				streamable.stream().forEach(System.out::println);
-			}catch(Exception e){
-				failed=true;
-				fail(e.getMessage());
-			}
-				});
-			Thread t3 = new Thread( ()->{
-			init.countDown();
-			try {
-				init.await();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			try{
-				streamable.stream().forEach(System.out::println);
-			}catch(Exception e){
-				failed=true;
-				fail(e.getMessage());
-			}
-			});
-
-			t1.start();
-			t2.start();
-			t3.start();
-			init.countDown();
-			t1.join();
-			t2.join();
-			t3.join();
-		}
-		assertFalse(failed);
-	}
 
 }

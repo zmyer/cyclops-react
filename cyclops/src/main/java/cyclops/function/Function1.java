@@ -6,19 +6,17 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.oath.cyclops.hkt.Higher;
-import cyclops.reactive.collections.immutable.VectorX;
+
 import cyclops.control.*;
 
-import cyclops.control.Eval;
 import cyclops.control.Maybe;
-import cyclops.reactive.collections.immutable.LinkedListX;
-import cyclops.reactive.collections.mutable.DequeX;
-import cyclops.reactive.collections.mutable.ListX;
-import cyclops.reactive.collections.mutable.SetX;
+import cyclops.data.LazySeq;
+import cyclops.data.Seq;
+
 import cyclops.control.Future;
+import cyclops.data.Vector;
 import cyclops.reactive.ReactiveSeq;
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 import cyclops.data.tuple.Tuple;
 import cyclops.data.tuple.Tuple2;
 import cyclops.data.tuple.Tuple3;
@@ -27,13 +25,13 @@ import cyclops.data.tuple.Tuple4;
 @FunctionalInterface
 public interface Function1<T,  R> extends Function<T,R>{
 
-    public static <T1,  T3,R> Function1<T1, R> of(final Function<T1, R> triFunc){
+    public static <T1, R> Function1<T1, R> of(final Function<T1, R> triFunc){
     return a->triFunc.apply(a);
   }
-    public static <T1,  T3,R> Function1<T1, R> λ(final Function1<T1, R> triFunc){
+    public static <T1,  R> Function1<T1, R> λ(final Function1<T1, R> triFunc){
         return triFunc;
     }
-    public static <T1,  T3,R> Function1<? super T1,? extends R> λv(final Function1<? super T1,? extends R> triFunc){
+    public static <T1,  R> Function1<? super T1,? extends R> λv(final Function1<? super T1,? extends R> triFunc){
         return triFunc;
     }
 
@@ -116,7 +114,7 @@ public interface Function1<T,  R> extends Function<T,R>{
     }
 
     default <T2> Function1<Either<T, T2>, R> fanIn(Function<? super T2, ? extends R> fanIn) {
-        return e ->   e.visit(this, fanIn);
+        return e ->   e.fold(this, fanIn);
     }
     default <__> Function1<Either<T, __>, Either<R, __>> leftFn() {
 
@@ -200,21 +198,15 @@ public interface Function1<T,  R> extends Function<T,R>{
     }
     interface FunctionalOperations<T1,R> extends Function1<T1,R> {
 
-        default ListX<R> mapF(ListX<T1> list) {
-            return list.map(this);
-        }
-        default DequeX<R> mapF(DequeX<T1> list) {
-            return list.map(this);
-        }
-        default SetX<R> mapF(SetX<T1> set) {
-            return set.map(this);
-        }
-
-        default LinkedListX<R> mapF(LinkedListX<T1> list) {
+        default Seq<R> mapF(Seq<T1> list) {
             return list.map(this);
         }
 
-        default VectorX<R> mapF(VectorX<T1> list) {
+        default LazySeq<R> mapF(LazySeq<T1> list) {
+            return list.map(this);
+        }
+
+        default Vector<R> mapF(Vector<T1> list) {
             return list.map(this);
         }
         default Streamable<R> mapF(Streamable<T1> stream) {
@@ -253,17 +245,17 @@ public interface Function1<T,  R> extends Function<T,R>{
         }
 
 
-        default Function1<T1, ListX<R>> liftList() {
-            return in -> ListX.of(apply(in));
+        default Function1<T1, Seq<R>> liftList() {
+            return in -> Seq.of(apply(in));
         }
 
 
-        default Function1<T1, LinkedListX<R>> liftLinkedListX() {
-            return in -> LinkedListX.of(apply(in));
+        default Function1<T1, LazySeq<R>> liftLazySeq() {
+            return in -> LazySeq.of(apply(in));
         }
 
-        default Function1<T1, VectorX<R>> liftVectorX() {
-            return in -> VectorX.of(apply(in));
+        default Function1<T1, Vector<R>> liftVector() {
+            return in -> Vector.of(apply(in));
         }
     }
 

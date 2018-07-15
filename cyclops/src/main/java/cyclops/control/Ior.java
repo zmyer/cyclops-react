@@ -10,7 +10,6 @@ import com.oath.cyclops.types.foldable.To;
 import com.oath.cyclops.types.functor.BiTransformable;
 import com.oath.cyclops.types.functor.Transformable;
 import com.oath.cyclops.types.reactive.ValueSubscriber;
-import com.oath.cyclops.types.traversable.IterableX;
 import cyclops.function.*;
 import com.oath.cyclops.hkt.DataWitness.ior;
 import cyclops.reactive.ReactiveSeq;
@@ -52,6 +51,9 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
     Ior<LT,RT> recover(RT value);
     Ior<LT,RT> recoverWith(Supplier<? extends Ior<LT,RT>> fn);
 
+    default int arity(){
+        return 2;
+    }
     /**
      * Static method useful as a method reference for fluent consumption of any value type stored in this Either
      * (will capture the lowest common type)
@@ -76,7 +78,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
     }
 
     static <X, PT extends X, ST extends X,R> R visitAny(Ior<ST,PT> either, Function<? super X, ? extends R> fn){
-        return either.visit(fn, fn, (a,b)-> fn.apply(a));
+        return either.fold(fn, fn, (a, b)-> fn.apply(a));
     }
 
     static <X, LT extends X, RT extends X> X visitAny(Consumer<? super X> c,Ior<LT,RT> either){
@@ -275,7 +277,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      */
     @Override
     default <ST2> Either<ST2, RT> toEither(final ST2 secondary) {
-        return visit(s -> Either.left(secondary), p -> Either.right(p), (s, p) -> Either.right(p));
+        return fold(s -> Either.left(secondary), p -> Either.right(p), (s, p) -> Either.right(p));
     }
 
 
@@ -359,8 +361,8 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param both Function to execute if this Ior contains both types
      * @return Result of executing the appropriate function
      */
-     <R> R visit(final Function<? super LT, ? extends R> secondary, final Function<? super RT, ? extends R> primary,
-                 final BiFunction<? super LT, ? super RT, ? extends R> both) ;
+     <R> R fold(final Function<? super LT, ? extends R> secondary, final Function<? super RT, ? extends R> primary,
+                final BiFunction<? super LT, ? super RT, ? extends R> both) ;
 
 
     /* (non-Javadoc)
@@ -418,8 +420,8 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * {@code
      *  Ior<String,Integer> just  = Ior.right(10);
         Ior<String,Integer> none = Ior.left("none");
-     *  Ior<ListX<Integer>,ListX<String>> iors =Ior.sequenceLeft(ListX.of(just,none,Ior.right(1)));
-        //Ior.right(ListX.of("none")))
+     *  Ior<Seq<Integer>,Seq<String>> iors =Ior.sequenceLeft(Seq.of(just,none,Ior.right(1)));
+        //Ior.right(Seq.of("none")))
      *
      * }
      * </pre>
@@ -428,8 +430,8 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param iors Iors to sequence
      * @return Ior sequenced and swapped
      */
-    public static <ST, PT> Ior<PT, ReactiveSeq<ST>> sequenceLeft(final IterableX<? extends Ior<ST, PT>> iors) {
-        return sequence(iors.stream().filterNot(Ior::isRight).map(Ior::swap));
+    public static <ST, PT> Ior<PT, ReactiveSeq<ST>> sequenceLeft(final Iterable<? extends Ior<ST, PT>> iors) {
+        return sequence(ReactiveSeq.fromIterable(iors).filterNot(Ior::isRight).map(Ior::swap));
 
     }
 
@@ -440,7 +442,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * {@code
      *  Ior<String,Integer> just  = Ior.right(10);
         Ior<String,Integer> none = Ior.left("none");
-     *  Ior<?,PersistentSetX<String>> iors = Ior.accumulateLeft(ListX.of(just,none,Ior.right(1)),Reducers.<String>toPersistentSetX());
+     *  Ior<?,PersistentSetX<String>> iors = Ior.accumulateLeft(Seq.of(just,none,Ior.right(1)),Reducers.<String>toPersistentSetX());
       //Ior.right(PersistentSetX.of("none"))));
       * }
      * </pre>
@@ -448,8 +450,8 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param reducer Reducer to accumulate results
      * @return Ior populated with the accumulate left operation
      */
-    public static <ST, PT, R> Ior<PT, R> accumulateLeft(final IterableX<Ior<ST, PT>> iors, final Reducer<R,ST> reducer) {
-        return sequenceLeft(iors).map(s -> s.mapReduce(reducer));
+    public static <ST, PT, R> Ior<PT, R> accumulateLeft(final Iterable<Ior<ST, PT>> iors, final Reducer<R,ST> reducer) {
+        return sequenceLeft(iors).map(s -> s.foldMap(reducer));
     }
 
     /**
@@ -462,7 +464,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      *  Ior<String,Integer> just  = Ior.right(10);
         Ior<String,Integer> none = Ior.left("none");
 
-     *  Ior<?,String> iors = Ior.accumulateLeft(ListX.of(just,none,Ior.left("1")),i->""+i,Monoids.stringConcat);
+     *  Ior<?,String> iors = Ior.accumulateLeft(Seq.of(just,none,Ior.left("1")),i->""+i,Monoids.stringConcat);
         //Ior.right("none1")
      *
      * }
@@ -475,7 +477,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param reducer Semigroup to combine values from each Ior
      * @return Ior populated with the accumulate Secondary operation
      */
-    public static <ST, PT, R> Ior<PT, R> accumulateLeft(final IterableX<Ior<ST, PT>> iors, final Function<? super ST, R> mapper,
+    public static <ST, PT, R> Ior<PT, R> accumulateLeft(final Iterable<Ior<ST, PT>> iors, final Function<? super ST, R> mapper,
                                                                final Monoid<R> reducer) {
         return sequenceLeft(iors).map(s -> s.map(mapper)
                                                  .reduce(reducer));
@@ -491,7 +493,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      *  Ior<String,Integer> just  = Ior.right(10);
         Ior<String,Integer> none = Ior.left("none");
 
-     * Ior<?,Integer> iors = Ior.accumulateLeft(Monoids.intSum,ListX.of(Ior.both(2, "boo!"),Ior.left(1)));
+     * Ior<?,Integer> iors = Ior.accumulateLeft(Monoids.intSum,Seq.of(Ior.both(2, "boo!"),Ior.left(1)));
        //Ior.right(3);  2+1
      *
      *
@@ -503,7 +505,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param reducer  Semigroup to combine values from each Ior
      * @return populated with the accumulate Secondary operation
      */
-    public static <ST, PT> Ior<PT, ST> accumulateLeft(final Monoid<ST> reducer, final IterableX<Ior<ST, PT>> iors) {
+    public static <ST, PT> Ior<PT, ST> accumulateLeft(final Monoid<ST> reducer, final Iterable<Ior<ST, PT>> iors) {
         return sequenceLeft(iors).map(s -> s.reduce(reducer));
     }
 
@@ -517,8 +519,8 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
        Ior<String,Integer> none = Ior.left("none");
 
 
-     * Ior<String,ReactiveSeq<Integer>> iors =Ior.sequenceRight(ListX.of(just,none,Ior.right(1)));
-       //Ior.right(ListX.of(10,1)));
+     * Ior<String,ReactiveSeq<Integer>> iors =Ior.sequenceRight(Seq.of(just,none,Ior.right(1)));
+       //Ior.right(Seq.of(10,1)));
      *
      * }</pre>
      *
@@ -527,14 +529,14 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param iors Iors to sequence
      * @return Ior Sequenced
      */
-    public static <ST, PT> Ior<ST, ReactiveSeq<PT>> sequenceRight(final IterableX<Ior<ST, PT>> iors) {
-        return sequence(iors.stream().filterNot(Ior::isLeft));
+    public static <ST, PT> Ior<ST, ReactiveSeq<PT>> sequenceRight(final Iterable<Ior<ST, PT>> iors) {
+        return sequence(ReactiveSeq.fromIterable(iors).filterNot(Ior::isLeft));
     }
   public static  <L,T> Ior<L,ReactiveSeq<T>> sequence(ReactiveSeq<? extends Ior<L,T>> stream) {
 
     Ior<L, ReactiveSeq<T>> identity = right(ReactiveSeq.empty());
 
-    BiFunction<Ior<L,ReactiveSeq<T>>,Ior<L,T>,Ior<L,ReactiveSeq<T>>> combineToStream = (acc,next) ->acc.zip(next,(a,b)->a.appendAll(b));
+    BiFunction<Ior<L,ReactiveSeq<T>>,Ior<L,T>,Ior<L,ReactiveSeq<T>>> combineToStream = (acc,next) ->acc.zip(next,(a,b)->a.append(b));
 
     BinaryOperator<Ior<L,ReactiveSeq<T>>> combineStreams = (a,b)-> a.zip(b,(z1,z2)->z1.appendStream(z2));
 
@@ -552,7 +554,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      *  Ior<String,Integer> just  = Ior.right(10);
         Ior<String,Integer> none = Ior.left("none");
      *
-     *  Ior<?,PersistentSetX<Integer>> iors =Ior.accumulateRight(ListX.of(just,none,Ior.right(1)),Reducers.toPersistentSetX());
+     *  Ior<?,PersistentSetX<Integer>> iors =Ior.accumulateRight(Seq.of(just,none,Ior.right(1)),Reducers.toPersistentSetX());
         //Ior.right(PersistentSetX.of(10,1))));
      * }
      * </pre>
@@ -560,8 +562,8 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param reducer Reducer to accumulate results
      * @return Ior populated with the accumulate right operation
      */
-    public static <ST, PT, R> Ior<ST, R> accumulateRight(final IterableX<Ior<ST, PT>> iors, final Reducer<R,PT> reducer) {
-        return sequenceRight(iors).map(s -> s.mapReduce(reducer));
+    public static <ST, PT, R> Ior<ST, R> accumulateRight(final Iterable<Ior<ST, PT>> iors, final Reducer<R,PT> reducer) {
+        return sequenceRight(iors).map(s -> s.foldMap(reducer));
     }
 
     /**
@@ -574,7 +576,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      *  Ior<String,Integer> just  = Ior.right(10);
         Ior<String,Integer> none = Ior.left("none");
 
-     * Ior<?,String> iors = Ior.accumulateRight(ListX.of(just,none,Ior.right(1)),i->""+i,SemigroupK.stringConcat);
+     * Ior<?,String> iors = Ior.accumulateRight(Seq.of(just,none,Ior.right(1)),i->""+i,SemigroupK.stringConcat);
        //Ior.right("101"));
      * }
      * </pre>
@@ -585,7 +587,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param reducer Reducer to accumulate results
      * @return Ior populated with the accumulate right operation
      */
-    public static <ST, PT, R> Ior<ST, R> accumulateRight(final IterableX<Ior<ST, PT>> iors, final Function<? super PT, R> mapper,
+    public static <ST, PT, R> Ior<ST, R> accumulateRight(final Iterable<Ior<ST, PT>> iors, final Function<? super PT, R> mapper,
                                                                 final Semigroup<R> reducer) {
         return sequenceRight(iors).map(s -> s.map(mapper)
                                                .reduce(reducer)
@@ -601,7 +603,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      *  Ior<String,Integer> just  = Ior.right(10);
         Ior<String,Integer> none = Ior.left("none");
      *
-     *  Ior<?,Integer> iors =Ior.accumulateRight(ListX.of(just,none,Ior.right(1)),SemigroupK.intSum);
+     *  Ior<?,Integer> iors =Ior.accumulateRight(Seq.of(just,none,Ior.right(1)),SemigroupK.intSum);
         //Ior.right(11);
      *
      * }
@@ -613,7 +615,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
      * @param reducer  Reducer to accumulate results
      * @return  Ior populated with the accumulate right operation
      */
-    public static <ST, PT> Ior<ST, PT> accumulateRight(final IterableX<Ior<ST, PT>> iors, final Semigroup<PT> reducer) {
+    public static <ST, PT> Ior<ST, PT> accumulateRight(final Iterable<Ior<ST, PT>> iors, final Semigroup<PT> reducer) {
         return sequenceRight(iors).map(s -> s.reduce(reducer)
                                                .get());
     }
@@ -649,15 +651,6 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
 
 
     /* (non-Javadoc)
-     * @see com.oath.cyclops.lambda.monads.Transformable#trampoline(java.util.function.Function)
-     */
-    @Override
-    default <R> Ior<LT, R> trampoline(final Function<? super RT, ? extends Trampoline<? extends R>> mapper) {
-
-        return (Ior<LT, R>) Transformable.super.trampoline(mapper);
-    }
-
-    /* (non-Javadoc)
      * @see com.oath.cyclops.lambda.monads.BiTransformable#bipeek(java.util.function.Consumer, java.util.function.Consumer)
      */
     @Override
@@ -667,15 +660,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
     }
 
 
-    /* (non-Javadoc)
-     * @see com.oath.cyclops.lambda.monads.BiTransformable#bitrampoline(java.util.function.Function, java.util.function.Function)
-     */
-    @Override
-    default <R1, R2> Ior<R1, R2> bitrampoline(final Function<? super LT, ? extends Trampoline<? extends R1>> mapper1,
-            final Function<? super RT, ? extends Trampoline<? extends R2>> mapper2) {
 
-        return (Ior<R1, R2>) BiTransformable.super.bitrampoline(mapper1, mapper2);
-    }
 
     default <T2, R> Ior<LT, R> zip(final Ior<LT,? extends T2> app, final BiFunction<? super RT, ? super T2, ? extends R> fn){
         return flatMap(t->app.map(t2->fn.apply(t,t2)));
@@ -733,8 +718,8 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
         }
 
         @Override
-        public <R> R visit(final Function<? super ST, ? extends R> secondary, final Function<? super PT, ? extends R> primary,
-                           final BiFunction<? super ST, ? super PT, ? extends R> both) {
+        public <R> R fold(final Function<? super ST, ? extends R> secondary, final Function<? super PT, ? extends R> primary,
+                          final BiFunction<? super ST, ? super PT, ? extends R> both) {
             return primary.apply(value);
         }
 
@@ -826,7 +811,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
 
 
         @Override
-        public <R> R visit(Function<? super PT, ? extends R> present, Supplier<? extends R> absent) {
+        public <R> R fold(Function<? super PT, ? extends R> present, Supplier<? extends R> absent) {
             return present.apply(value);
         }
     }
@@ -945,9 +930,9 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
 
 
             @Override
-            public <R> R visit(final Function<? super ST, ? extends R> secondary, final Function<? super PT, ? extends R> primary,
-                               final BiFunction<? super ST, ? super PT, ? extends R> both) {
-                return swap().visit(secondary, () -> null);
+            public <R> R fold(final Function<? super ST, ? extends R> secondary, final Function<? super PT, ? extends R> primary,
+                              final BiFunction<? super ST, ? super PT, ? extends R> both) {
+                return swap().fold(secondary, () -> null);
             }
 
             @Override
@@ -980,7 +965,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
 
 
             @Override
-            public <R> R visit(Function<? super PT, ? extends R> present, Supplier<? extends R> absent) {
+            public <R> R fold(Function<? super PT, ? extends R> present, Supplier<? extends R> absent) {
                 return absent.get();
             }
         }
@@ -1065,8 +1050,8 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
             }
 
             @Override
-            public <R> R visit(final Function<? super ST, ? extends R> secondary, final Function<? super PT, ? extends R> primary,
-                               final BiFunction<? super ST, ? super PT, ? extends R> both) {
+            public <R> R fold(final Function<? super ST, ? extends R> secondary, final Function<? super PT, ? extends R> primary,
+                              final BiFunction<? super ST, ? super PT, ? extends R> both) {
                 return both.apply(this.secondary,this.primary);
             }
 
@@ -1144,7 +1129,7 @@ public interface Ior<LT, RT> extends To<Ior<LT, RT>>, Value<RT>,OrElseValue<RT,I
 
 
             @Override
-            public <R> R visit(Function<? super PT, ? extends R> present, Supplier<? extends R> absent) {
+            public <R> R fold(Function<? super PT, ? extends R> present, Supplier<? extends R> absent) {
                 return present.apply(primary);
             }
         }

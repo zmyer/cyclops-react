@@ -1,6 +1,7 @@
 package cyclops.monads.anym;
 
 import cyclops.companion.Optionals;
+import cyclops.control.Eval;
 import cyclops.monads.Witness;
 import cyclops.monads.Witness.*;
 import static org.hamcrest.Matchers.equalTo;
@@ -23,14 +24,13 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 
-import com.oath.anym.AnyMSeq;
+import com.oath.cyclops.anym.AnyMSeq;
 import cyclops.data.tuple.Tuple;
 import cyclops.data.tuple.Tuple2;
 import cyclops.monads.WitnessType;
 import org.junit.Test;
 
 import cyclops.monads.AnyM;
-import cyclops.control.Eval;
 import cyclops.control.Maybe;
 import cyclops.reactive.collections.mutable.ListX;
 import cyclops.reactive.collections.mutable.QueueX;
@@ -81,7 +81,7 @@ public class AnyMTest {
 
       Eval<Integer> lazyResult = wrapped
               .map(i -> i * 10)
-			  .foldLazy(s-> s.reduce(50, (acc, next) -> acc + next));
+			  .foldLazy(s-> s.foldLeft(50, (acc, next) -> acc + next));
 
       assertEquals(200, lazyResult.get().intValue());
     }
@@ -91,7 +91,7 @@ public class AnyMTest {
 
       Eval<Integer> lazyResult = wrapped
               .map(i -> i * 10)
-              .foldLazy(s->s.reduce(50, (acc, next) -> acc + next));
+              .foldLazy(s->s.foldLeft(50, (acc, next) -> acc + next));
 
       assertEquals(200, lazyResult.get().intValue());
     }
@@ -116,7 +116,7 @@ public class AnyMTest {
     public void flatMapFirstFlux(){
 
        List l= AnyM.fromList(ListX.of(1,2,3))
-                   .flatMapP(i->Flux.just(10,i)).unwrap();
+                   .mergeMap(i->Flux.just(10,i)).unwrap();
        assertThat(l,equalTo(ListX.of(10, 1, 10, 2, 10, 3)));
     }
     @Test
@@ -147,7 +147,7 @@ public class AnyMTest {
     public void flatMapValueFirstFlux(){
 
         Maybe l= AnyM.fromMaybe(Maybe.of(1))
-            .flatMapP(i->Flux.just(10,i))
+            .mergeMap(i->Flux.just(10,i))
             .unwrap();
         assertThat(l,equalTo(Maybe.of(10)));
     }

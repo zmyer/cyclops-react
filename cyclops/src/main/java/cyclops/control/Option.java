@@ -1,15 +1,14 @@
 package cyclops.control;
 
-import com.oath.cyclops.hkt.DataWitness;
 import com.oath.cyclops.hkt.DataWitness.option;
 import com.oath.cyclops.hkt.Higher;
 import com.oath.cyclops.matching.Sealed2;
 import com.oath.cyclops.types.*;
 import com.oath.cyclops.types.foldable.To;
 import com.oath.cyclops.types.recoverable.Recoverable;
-import com.oath.cyclops.types.traversable.IterableX;
 import cyclops.data.tuple.*;
 import cyclops.function.*;
+import cyclops.function.checked.CheckedSupplier;
 import cyclops.reactive.ReactiveSeq;
 import cyclops.reactive.Spouts;
 import lombok.AccessLevel;
@@ -20,7 +19,6 @@ import java.io.Serializable;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.stream.Stream;
 
@@ -42,6 +40,23 @@ public interface Option<T> extends To<Option<T>>,
 
 
 
+    public static <T> Option<T> attempt(CheckedSupplier<T> s){
+        try {
+            return some(s.get());
+        } catch (Throwable throwable) {
+            return none();
+        }
+    }
+    default <R> Option<R> attemptFlatMap(Function<? super T,? extends Option<? extends R>> fn){
+        return flatMap(t->{
+            try{
+                return fn.apply(t);
+            }catch(Throwable e){
+                return none();
+            }
+        });
+
+    }
     @SuppressWarnings("rawtypes")
     final static Option EMPTY = new Option.None<>();
     public static  <T,R> Option<R> tailRec(T initial, Function<? super T, ? extends Option<? extends Either<T, R>>> fn){
@@ -49,13 +64,13 @@ public interface Option<T> extends To<Option<T>>,
       next[0] = Option.some(Either.left(initial));
       boolean cont = true;
       do {
-        cont = next[0].visit(p -> p.visit(s -> {
+        cont = next[0].fold(p -> p.fold(s -> {
           next[0] = narrowK(fn.apply(s));
           return true;
         }, pr -> false), () -> false);
       } while (cont);
 
-      return next[0].map(x->x.visit(l->null,r->r));
+      return next[0].map(x->x.fold(l->null, r->r));
     }
     public static <T> Option<T> narrowK(final Higher<option, T> opt) {
       return (Option<T>)opt;
@@ -102,7 +117,7 @@ public interface Option<T> extends To<Option<T>>,
      * @see com.oath.cyclops.types.MonadicValue#flatMapP(java.util.function.Function)
      */
     @Override
-    default <R> Option<R> flatMapP(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
+    default <R> Option<R> mergeMap(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
         return this.flatMap(a -> {
             final Publisher<? extends R> publisher = mapper.apply(a);
             return Option.fromPublisher(publisher);
@@ -253,7 +268,7 @@ public interface Option<T> extends To<Option<T>>,
 
     /**
      * Sequence operation, take a Collection of Options and turn it into a Option with a Collection
-     * Only successes are retained. By constrast with {@link Option#sequence(IterableX)} Option#none/ None types are
+     * Only successes are retained. By constrast with {@link Option#sequence(Iterable)} Option#none/ None types are
      * tolerated and ignored.
      *
      * <pre>
@@ -261,21 +276,21 @@ public interface Option<T> extends To<Option<T>>,
      *  Option<Integer> just = Option.of(10);
         Option<Integer> none = Option.none();
      *
-     * Option<ListX<Integer>> maybes = Option.sequenceJust(ListX.of(just, none, Option.of(1)));
-      //Option.of(ListX.of(10, 1));
+     * Option<Seq<Integer>> maybes = Option.sequenceJust(Seq.of(just, none, Option.of(1)));
+      //Option.of(Seq.of(10, 1));
      * }
      * </pre>
      *
      * @param maybes Option to Sequence
      * @return Option with a List of values
      */
-    public static <T> Option<ReactiveSeq<T>> sequenceJust(final IterableX<? extends Option<T>> maybes) {
-        return sequence(maybes.stream().filter(Option::isPresent));
+    public static <T> Option<ReactiveSeq<T>> sequenceJust(final Iterable<? extends Option<T>> maybes) {
+        return sequence(ReactiveSeq.fromIterable(maybes).filter(Option::isPresent));
     }
 
     /**
      * Sequence operation, take a Collection of Options and turn it into a Option with a Collection
-     * By constrast with {@link Option#sequenceJust(IterableX)} if any Option types are None / zero
+     * By constrast with {@link Option#sequenceJust(Iterable)} if any Option types are None / zero
      * the return type will be an zero Option / None
      *
      * <pre>
@@ -284,7 +299,7 @@ public interface Option<T> extends To<Option<T>>,
      *  Option<Integer> just = Option.of(10);
         Option<Integer> none = Option.none();
      *
-     *  Option<ListX<Integer>> maybes = Option.sequence(ListX.of(just, none, Option.of(1)));
+     *  Option<Seq<Integer>> maybes = Option.sequence(Seq.of(just, none, Option.of(1)));
        //Option.none();
      *
      * }
@@ -294,14 +309,14 @@ public interface Option<T> extends To<Option<T>>,
      * @param maybes Option to Sequence
      * @return  Option with a List of values
      */
-    public static <T> Option<ReactiveSeq<T>> sequence(final IterableX<? extends Option<T>> maybes) {
-        return sequence(maybes.stream());
+    public static <T> Option<ReactiveSeq<T>> sequence(final Iterable<? extends Option<T>> maybes) {
+        return sequence(ReactiveSeq.fromIterable(maybes));
 
     }
 
     /**
      * Sequence operation, take a Stream of Option and turn it into a Option with a Stream
-     * By constrast with {@link Maybe#sequenceJust(IterableX)} Option#zero/ None types are
+     * By constrast with {@link Maybe#sequenceJust(Iterable)} Option#zero/ None types are
      * result in the returned Maybe being Option.zero / None
      *
      *
@@ -330,7 +345,7 @@ public interface Option<T> extends To<Option<T>>,
 
     Option<ReactiveSeq<T>> identity = Option.some(ReactiveSeq.empty());
 
-    BiFunction<Option<ReactiveSeq<T>>,Option<T>,Option<ReactiveSeq<T>>> combineToStream = (acc,next) ->acc.zip(next,(a,b)->a.appendAll(b));
+    BiFunction<Option<ReactiveSeq<T>>,Option<T>,Option<ReactiveSeq<T>>> combineToStream = (acc,next) ->acc.zip(next,(a,b)->a.append(b));
 
     BinaryOperator<Option<ReactiveSeq<T>>> combineStreams = (a,b)-> a.zip(b,(z1,z2)->z1.appendStream(z2));
 
@@ -348,7 +363,7 @@ public interface Option<T> extends To<Option<T>>,
      * {@code
      *  Option<Integer> just = Option.of(10);
     Option<Integer> none = Option.none();
-     * Option<PersistentSetX<Integer>> maybes = Option.accumulateJust(ListX.of(just, none, Option.of(1)), Reducers.toPersistentSetX());
+     * Option<PersistentSetX<Integer>> maybes = Option.accumulateJust(Seq.of(just, none, Option.of(1)), Reducers.toPersistentSetX());
     //Option.of(PersistentSetX.of(10, 1)));
      *
      * }
@@ -358,8 +373,8 @@ public interface Option<T> extends To<Option<T>>,
      * @param reducer Reducer to accumulate values with
      * @return Maybe with reduced value
      */
-    public static <T, R> Option<R> accumulateJust(final IterableX<Option<T>> maybes, final Reducer<R,T> reducer) {
-        return sequenceJust(maybes).map(s -> s.mapReduce(reducer));
+    public static <T, R> Option<R> accumulateJust(final Iterable<Option<T>> maybes, final Reducer<R,T> reducer) {
+        return sequenceJust(maybes).map(s -> s.foldMap(reducer));
     }
 
     /**
@@ -372,7 +387,7 @@ public interface Option<T> extends To<Option<T>>,
      *  Option<Integer> just = Option.of(10);
     Option<Integer> none = Option.none();
 
-     *  Option<String> maybes = Option.accumulateJust(ListX.of(just, none, Option.of(1)), i -> "" + i,
+     *  Option<String> maybes = Option.accumulateJust(Seq.of(just, none, Option.of(1)), i -> "" + i,
     SemigroupK.stringConcat);
     //Option.of("101")
      *
@@ -384,7 +399,7 @@ public interface Option<T> extends To<Option<T>>,
      * @param reducer Monoid to combine values from each Maybe
      * @return Maybe with reduced value
      */
-    public static <T, R> Option<R> accumulateJust(final IterableX<Option<T>> maybes, final Function<? super T, R> mapper,
+    public static <T, R> Option<R> accumulateJust(final Iterable<Option<T>> maybes, final Function<? super T, R> mapper,
                                                  final Monoid<R> reducer) {
         return sequenceJust(maybes).map(s -> s.map(mapper)
                 .reduce(reducer));
@@ -398,7 +413,7 @@ public interface Option<T> extends To<Option<T>>,
      * <pre>
      * {@code
      *
-     *  Option<Integer> maybes = Option.accumulateJust(Monoids.intSum,ListX.of(just, none, Option.of(1)));
+     *  Option<Integer> maybes = Option.accumulateJust(Monoids.intSum,Seq.of(just, none, Option.of(1)));
     //Option.of(11)
      *
      * }
@@ -410,24 +425,16 @@ public interface Option<T> extends To<Option<T>>,
      * @param reducer Monoid to combine values from each Maybe
      * @return Maybe with reduced value
      */
-    public static <T> Option<T> accumulateJust(final Monoid<T> reducer,final IterableX<Option<T>> maybes) {
+    public static <T> Option<T> accumulateJust(final Monoid<T> reducer,final Iterable<Option<T>> maybes) {
         return sequenceJust(maybes).map(s -> s.reduce(reducer));
     }
 
-  @Override
-    default <R> Option<R> retry(final Function<? super T, ? extends R> fn) {
-        return (Option<R>)MonadicValue.super.retry(fn);
-    }
 
     @Override
     default <U> Option<Tuple2<T, U>> zipWithPublisher(final Publisher<? extends U> other) {
         return (Option)Zippable.super.zipWithPublisher(other);
     }
 
-    @Override
-    default <R> Option<R> retry(final Function<? super T, ? extends R> fn, final int retries, final long delay, final TimeUnit timeUnit) {
-        return (Option<R>)MonadicValue.super.retry(fn,retries,delay,timeUnit);
-    }
 
     @Override
     default <S, U> Option<Tuple3<T, S, U>> zip3(final Iterable<? extends S> second, final Iterable<? extends U> third) {
@@ -449,10 +456,7 @@ public interface Option<T> extends To<Option<T>>,
         return (Option<R>)Zippable.super.zip4(second,third,fourth,fn);
     }
 
-    @Override
-    default <R> Option<R> flatMapS(final Function<? super T, ? extends Stream<? extends R>> mapper) {
-        return (Option<R>)MonadicValue.super.flatMapS(mapper);
-    }
+
 
     /* (non-Javadoc)
          * @see com.oath.cyclops.types.MonadicValue#forEach4(java.util.function.Function, java.util.function.BiFunction, com.oath.cyclops.util.function.TriFunction, com.oath.cyclops.util.function.QuadFunction)
@@ -556,26 +560,8 @@ public interface Option<T> extends To<Option<T>>,
         return Option.of(unit);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * com.oath.cyclops.types.MonadicValue#coflatMap(java.util.function.Function)
-     */
-    @Override
-    default <R> Option<R> coflatMap(final Function<? super MonadicValue<T>, R> mapper) {
-        return (Option<R>) MonadicValue.super.coflatMap(mapper);
-    }
 
-    /*
-     * cojoin (non-Javadoc)
-     *
-     * @see com.oath.cyclops.types.MonadicValue#nest()
-     */
-    @Override
-    default Option<MonadicValue<T>> nest() {
-        return (Option<MonadicValue<T>>) MonadicValue.super.nest();
-    }
+
 
   /*
    * (non-Javadoc)
@@ -616,7 +602,7 @@ public interface Option<T> extends To<Option<T>>,
      * @see com.oath.cyclops.types.foldable.Convertable#visit(java.util.function.Function, java.util.function.Supplier)
      */
     @Override
-    <R> R visit(Function<? super T, ? extends R> some, Supplier<? extends R> none);
+    <R> R fold(Function<? super T, ? extends R> some, Supplier<? extends R> none);
 
     /*
      * (non-Javadoc)
@@ -663,12 +649,6 @@ public interface Option<T> extends To<Option<T>>,
     }
 
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * com.oath.cyclops.lambda.monads.Functor#peek(java.util.function.Consumer)
-     */
     @Override
     default Option<T> peek(final Consumer<? super T> c) {
 
@@ -680,17 +660,6 @@ public interface Option<T> extends To<Option<T>>,
         return Option.none();
     }
 
-    /*
-         * (non-Javadoc)
-         *
-         * @see com.oath.cyclops.lambda.monads.Functor#trampoline(java.util.function.
-         * Function)
-         */
-    @Override
-    default <R> Option<R> trampoline(final Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-
-        return (Option<R>) MonadicValue.super.trampoline(mapper);
-    }
 
     public static <T> Option<T> fromNullable(T t) {
         if(t==null)
@@ -740,7 +709,7 @@ public interface Option<T> extends To<Option<T>>,
         }
 
         @Override
-        public <R> R visit(Function<? super T, ? extends R> some, Supplier<? extends R> none) {
+        public <R> R fold(Function<? super T, ? extends R> some, Supplier<? extends R> none) {
             return some.apply(value);
         }
 
@@ -837,7 +806,7 @@ public interface Option<T> extends To<Option<T>>,
 
 
         @Override
-        public <R> R visit(final Function<? super T, ? extends R> some, final Supplier<? extends R> none) {
+        public <R> R fold(final Function<? super T, ? extends R> some, final Supplier<? extends R> none) {
             return none.get();
         }
 
@@ -884,7 +853,7 @@ public interface Option<T> extends To<Option<T>>,
         }
 
         @Override
-        public <R> None<R> flatMapP(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
+        public <R> None<R> mergeMap(final Function<? super T, ? extends Publisher<? extends R>> mapper) {
             return NOTHING_EAGER;
         }
         @Override

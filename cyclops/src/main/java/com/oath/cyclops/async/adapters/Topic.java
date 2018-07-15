@@ -195,7 +195,7 @@ public class Topic<T> implements Adapter<T> {
 
         @Synchronized("lock")
         public void addQueue(final Queue<T> q) {
-            subscribers = subscribers.appendAll(q);
+            subscribers = subscribers.append(q);
         }
 
         @Synchronized("lock")
@@ -219,7 +219,7 @@ public class Topic<T> implements Adapter<T> {
     }
 
     @Override
-    public <R> R visit(final Function<? super Queue<T>, ? extends R> caseQueue, final Function<? super Topic<T>, ? extends R> caseTopic) {
+    public <R> R fold(final Function<? super Queue<T>, ? extends R> caseQueue, final Function<? super Topic<T>, ? extends R> caseTopic) {
         return caseTopic.apply(this);
     }
 

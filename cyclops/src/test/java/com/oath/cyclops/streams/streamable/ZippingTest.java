@@ -1,6 +1,6 @@
 package com.oath.cyclops.streams.streamable;
 
-import static cyclops.reactive.Streamable.of;
+import static cyclops.companion.Streamable.of;
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
@@ -15,13 +15,14 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import cyclops.data.tuple.Tuple;
 import cyclops.data.tuple.Tuple2;
 import cyclops.data.tuple.Tuple3;
 import cyclops.data.tuple.Tuple4;
 import org.junit.Before;
 import org.junit.Test;
 
-import cyclops.reactive.Streamable;
+import cyclops.companion.Streamable;
 
 public class ZippingTest {
 	Streamable<Integer> empty;
@@ -272,15 +273,15 @@ public class ZippingTest {
 	public void testZipWithIndex() {
 		assertEquals(asList(), of().zipWithIndex().toList());
 
-		assertThat(of("a").zipWithIndex().map(t -> t._2()).findFirst().get(), is(0l));
-		assertEquals(asList(new Tuple2("a", 0L)), of("a").zipWithIndex().toList());
+		assertThat(of("a").zipWithIndex().map(t -> t._2()).headOption().orElse(-1l), is(0l));
+		assertEquals(asList(Tuple.tuple("a", 0L)), of("a").zipWithIndex().toList());
 
 	}
 
 	@Test
 	public void testUnzip() {
 
-		Supplier<Streamable<Tuple2<Integer, String>>> s = () -> of(new Tuple2(1, "a"), new Tuple2(2, "b"), new Tuple2(3, "c"));
+		Supplier<Streamable<Tuple2<Integer, String>>> s = () -> of(Tuple.tuple(1, "a"), Tuple.tuple(2, "b"), Tuple.tuple(3, "c"));
 
 		Tuple2<Streamable<Integer>, Streamable<String>> u1 = Streamable.unzip(s.get());
 
@@ -293,7 +294,7 @@ public class ZippingTest {
 	@Test
 	public void testUnzipWithLimits() {
 
-		Supplier<Streamable<Tuple2<Integer, String>>> s = () -> of(new Tuple2(1, "a"), new Tuple2(2, "b"), new Tuple2(3, "c"));
+		Supplier<Streamable<Tuple2<Integer, String>>> s = () -> of(Tuple.tuple(1, "a"), Tuple.tuple(2, "b"), Tuple.tuple(3, "c"));
 
 		Tuple2<Streamable<Integer>, Streamable<String>> u1 = Streamable.unzip(s.get());
 

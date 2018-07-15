@@ -187,17 +187,10 @@ public class LazySeqInstances {
     BiFunction<Applicative<C2>,LazySeq<Higher<C2, T>>,Higher<C2, LazySeq<T>>> sequenceFn = (ap, list) -> {
 
       Higher<C2,LazySeq<T>> identity = ap.unit(LazySeq.empty());
+     BiFunction<Higher<C2,T>,Higher<C2,LazySeq<T>>,Higher<C2,LazySeq<T>>> combineToPStack =   (acc, next) -> ap.apBiFn(ap.unit((a, b) ->a.plus(b)),next,acc);
 
-      BiFunction<Higher<C2,LazySeq<T>>,Higher<C2,T>,Higher<C2,LazySeq<T>>> combineToPStack =   (acc, next) -> ap.apBiFn(ap.unit((a, b) ->a.plus(b)),acc,next);
+      return list.foldRight(identity,combineToPStack);
 
-      BinaryOperator<Higher<C2,LazySeq<T>>> combinePStacks = (a, b)-> ap.apBiFn(ap.unit((l1, l2)-> l1.plusAll(l2)),a,b); ;
-
-
-      return list.stream()
-        .reverse()
-        .reduce(identity,
-          combineToPStack,
-          combinePStacks);
 
 
     };
@@ -208,7 +201,7 @@ public class LazySeqInstances {
 
   public static <T,R> Foldable<lazySeq> foldable(){
     BiFunction<Monoid<T>,Higher<lazySeq,T>,T> foldRightFn =  (m, l)-> narrowK(l).foldRight(m);
-    BiFunction<Monoid<T>,Higher<lazySeq,T>,T> foldLeftFn = (m, l)-> narrowK(l).reduce(m);
+    BiFunction<Monoid<T>,Higher<lazySeq,T>,T> foldLeftFn = (m, l)-> narrowK(l).foldLeft(m);
     Function3<Monoid<R>, Function<T, R>, Higher<lazySeq, T>, R> foldMapFn = (m, f, l)->narrowK(l).map(f).foldLeft(m);
 
     return General.foldable(foldRightFn, foldLeftFn,foldMapFn);

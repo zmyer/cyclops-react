@@ -42,7 +42,7 @@ public class Optionals {
         next[0] = Optional.of(Either.left(initial));
         boolean cont = true;
         do {
-            cont = Optionals.visit(next[0],p -> p.visit(s -> {
+            cont = Optionals.fold(next[0], p -> p.fold(s -> {
                 next[0] = fn.apply(s);
                 return true;
             }, pr -> false), () -> false);
@@ -51,7 +51,7 @@ public class Optionals {
     }
 
 
-    public static <T,R> R visit(Optional<T> optional, Function<? super T, ? extends R> fn, Supplier<R> s){
+    public static <T,R> R fold(Optional<T> optional, Function<? super T, ? extends R> fn, Supplier<R> s){
        return optional.isPresent() ? fn.apply(optional.get()) : s.get();
     }
 
@@ -339,7 +339,7 @@ public class Optionals {
      *  Optional<Integer> just = Optional.of(10);
         Optional<Integer> none = Optional.zero();
      *
-     *  Optional<ListX<Integer>> opts = Optionals.sequence(ListX.of(just, none, Optional.of(1)));
+     *  Optional<Seq<Integer>> opts = Optionals.sequence(Seq.of(just, none, Optional.of(1)));
         //Optional.zero();
      *
      * }
@@ -363,8 +363,8 @@ public class Optionals {
      *  Optional<Integer> just = Optional.of(10);
         Optional<Integer> none = Optional.zero();
      *
-     * Optional<ListX<Integer>> maybes = Optionals.sequencePresent(ListX.of(just, none, Optional.of(1)));
-       //Optional.of(ListX.of(10, 1));
+     * Optional<Seq<Integer>> maybes = Optionals.sequencePresent(Seq.of(just, none, Optional.of(1)));
+       //Optional.of(Seq.of(10, 1));
      * }
      * </pre>
      *
@@ -385,7 +385,7 @@ public class Optionals {
      *  Optional<Integer> just = Optional.of(10);
         Optional<Integer> none = Optional.zero();
      *
-     *  Optional<ListX<Integer>> maybes = Optionals.sequence(ListX.of(just, none, Optional.of(1)));
+     *  Optional<Seq<Integer>> maybes = Optionals.sequence(Seq.of(just, none, Optional.of(1)));
         //Optional.zero();
      *
      * }
@@ -403,7 +403,7 @@ public class Optionals {
 
     Optional<ReactiveSeq<T>> identity = Optional.of(ReactiveSeq.empty());
 
-    BiFunction<Optional<ReactiveSeq<T>>,Optional<T>,Optional<ReactiveSeq<T>>> combineToStream = (acc,next) ->zip(acc,next,(a,b)->a.appendAll(b));
+    BiFunction<Optional<ReactiveSeq<T>>,Optional<T>,Optional<ReactiveSeq<T>>> combineToStream = (acc,next) ->zip(acc,next,(a,b)->a.append(b));
 
     BinaryOperator<Optional<ReactiveSeq<T>>> combineStreams = (a,b)-> zip(a,b,(z1,z2)->z1.appendStream(z2));
 
@@ -422,7 +422,7 @@ public class Optionals {
      *  Optional<Integer> just = Optional.of(10);
         Optional<Integer> none = Optional.zero();
 
-     * Optional<PersistentSetX<Integer>> opts = Optional.accumulateJust(ListX.of(just, none, Optional.of(1)), Reducers.toPersistentSetX());
+     * Optional<PersistentSetX<Integer>> opts = Optional.accumulateJust(Seq.of(just, none, Optional.of(1)), Reducers.toPersistentSetX());
        //Optional.of(PersistentSetX.of(10, 1)));
      *
      * }
@@ -433,7 +433,7 @@ public class Optionals {
      * @return Optional with reduced value
      */
     public static <T, R> Optional<R> accumulatePresent(final IterableX<Optional<T>> optionals, final Reducer<R,T> reducer) {
-        return sequencePresent(optionals).map(s -> s.mapReduce(reducer));
+        return sequencePresent(optionals).map(s -> s.foldMap(reducer));
     }
     /**
      * Accumulate the results only from those Optionals which have a value present, using the supplied mapping function to
@@ -445,7 +445,7 @@ public class Optionals {
      *  Optional<Integer> just = Optional.of(10);
         Optional<Integer> none = Optional.zero();
 
-     *  Optional<String> opts = Optional.accumulateJust(ListX.of(just, none, Optional.of(1)), i -> "" + i,
+     *  Optional<String> opts = Optional.accumulateJust(Seq.of(just, none, Optional.of(1)), i -> "" + i,
                                                      Monoids.stringConcat);
         //Optional.of("101")
      *
@@ -472,7 +472,7 @@ public class Optionals {
      *  Optional<Integer> just = Optional.of(10);
         Optional<Integer> none = Optional.zero();
 
-     *  Optional<String> opts = Optional.accumulateJust(Monoids.stringConcat,ListX.of(just, none, Optional.of(1)),
+     *  Optional<String> opts = Optional.accumulateJust(Monoids.stringConcat,Seq.of(just, none, Optional.of(1)),
                                                      );
         //Optional.of("101")
      *

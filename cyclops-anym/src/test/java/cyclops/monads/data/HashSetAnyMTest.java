@@ -1,6 +1,6 @@
 package cyclops.monads.data;
 
-import com.oath.anym.AnyMSeq;
+import com.oath.cyclops.anym.AnyMSeq;
 import cyclops.companion.Reducers;
 import cyclops.data.HashSet;
 import cyclops.monads.AnyM;
@@ -21,21 +21,11 @@ public class HashSetAnyMTest extends AbstractAnyMSeqTest<hashSet> {
 		return AnyM.fromHashSet(HashSet.of(values));
 	}
 
-	/* (non-Javadoc)
-	 * @see com.oath.cyclops.function.collections.extensions.AbstractCollectionXTest#zero()
-	 */
 	@Override
 	public <T> AnyMSeq<Witness.hashSet,T> empty() {
 		return AnyM.fromHashSet(HashSet.empty());
 	}
-	 /* (non-Javadoc)
-     * @see com.oath.cyclops.function.collections.extensions.AbstractAnyMSeqTest#whenGreaterThan2()
-     */
-    @Override
-    @Test
-    public void whenGreaterThan2() {
 
-    }
 
 	@Test @Ignore //lazy data structures only
 	public void testRecover1(){
@@ -46,10 +36,7 @@ public class HashSetAnyMTest extends AbstractAnyMSeqTest<hashSet> {
 		assertThat(of(1,2,3).map(e->{throw new RuntimeException();}).recover(RuntimeException.class,e->"hello").join(" "),equalTo("hello"));
 	}
 
-    @Test
-    public void testRetry(){
-        of(1,2,3).retry(i->i+2).printOut();
-    }
+
     @Test @Ignore
     public void testSorted() {
 

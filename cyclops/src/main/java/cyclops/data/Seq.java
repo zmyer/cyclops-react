@@ -6,11 +6,9 @@ import com.oath.cyclops.hkt.Higher;
 import com.oath.cyclops.types.Filters;
 import com.oath.cyclops.types.foldable.Folds;
 import com.oath.cyclops.types.functor.Transformable;
+import com.oath.cyclops.types.persistent.PersistentCollection;
 import com.oath.cyclops.types.persistent.PersistentIndexed;
 import com.oath.cyclops.types.persistent.PersistentList;
-import cyclops.reactive.collections.immutable.LinkedListX;
-import cyclops.reactive.collections.immutable.VectorX;
-import cyclops.reactive.collections.mutable.ListX;
 import cyclops.control.Either;
 import cyclops.control.Option;
 import cyclops.control.Trampoline;
@@ -20,6 +18,7 @@ import cyclops.data.tuple.Tuple3;
 import cyclops.data.tuple.Tuple4;
 import cyclops.function.Function3;
 import cyclops.function.Function4;
+import cyclops.function.Memoize;
 import cyclops.function.Monoid;
 import cyclops.reactive.Generator;
 import cyclops.reactive.ReactiveSeq;
@@ -30,8 +29,9 @@ import org.reactivestreams.Publisher;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.function.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 //safe list implementation that does not support exceptional states
@@ -43,6 +43,22 @@ public interface Seq<T> extends ImmutableList<T>,
                                  Serializable,
                                 Higher<seq,T> {
 
+    static <T> Collector<T, List<T>, Seq<T>> collector() {
+        Collector<T, ?, List<T>> c  = Collectors.toList();
+        return Collectors.<T, List<T>, Iterable<T>,Seq<T>>collectingAndThen((Collector)c,Seq::fromIterable);
+    }
+    default T headOrElse(T head){
+        return visit(s->s.head(),nil->head);
+    }
+    default T headOrElseGet(Supplier<? extends T> head){
+        return visit(s->s.head(),nil->head.get());
+    }
+    default Seq<T> tailOrElse(Seq<T> tail){
+        return visit(s->s.tail(),nil->tail);
+    }
+    default Seq<T> tailOrElseGet(Supplier<? extends Seq<T>> tail){
+        return visit(s->s.tail(),nil->tail.get());
+    }
 
     @Override
     default<R> Seq<R> unitIterable(Iterable<R> it){
@@ -100,8 +116,8 @@ public interface Seq<T> extends ImmutableList<T>,
     default ReactiveSeq<T> stream(){
         return ReactiveSeq.fromIterable(this);
     }
-    default LinkedListX<T> linkedListX(){
-        return LinkedListX.fromIterable(this);
+    default LazySeq<T> linkedSeq(){
+        return LazySeq.fromIterable(this);
     }
 
     static <T> Seq<T> fromIterable(Iterable<T> it){
@@ -115,7 +131,7 @@ public interface Seq<T> extends ImmutableList<T>,
         boolean newValue[] = {true};
         for(;;){
 
-            next = next.flatMap(e -> e.visit(s -> {
+            next = next.flatMap(e -> e.fold(s -> {
                         newValue[0]=true;
                         return fn.apply(s);
                         },
@@ -238,7 +254,7 @@ public interface Seq<T> extends ImmutableList<T>,
         }
         return l.visit(c->c.head,n->alt.get());
     }
-    default Seq<T> appendAll(T value){
+    default Seq<T> append(T value){
         return Seq.of(value).prependAll(this);
     }
     default Seq<T> appendAll(Iterable<? extends T> it){
@@ -326,10 +342,7 @@ public interface Seq<T> extends ImmutableList<T>,
         return (Seq<T>)ImmutableList.super.peek(c);
     }
 
-    @Override
-    default <R> Seq<R> trampoline(Function<? super T, ? extends Trampoline<? extends R>> mapper) {
-        return (Seq<R>)ImmutableList.super.trampoline(mapper);
-    }
+
     public static <T> Seq<T> narrowK(final Higher<seq, T> list) {
       return (Seq<T>)list;
     }
@@ -401,10 +414,7 @@ public interface Seq<T> extends ImmutableList<T>,
         return (Seq<R>)ImmutableList.super.zip4(second,third,fourth,fn);
     }
 
-    @Override
-    default <U> Seq<U> unitIterator(Iterator<U> it) {
-        return fromIterable(()->it);
-    }
+
 
     @Override
     default Seq<T> combine(BiPredicate<? super T, ? super T> predicate, BinaryOperator<T> op) {
@@ -457,28 +467,29 @@ public interface Seq<T> extends ImmutableList<T>,
     }
 
     @Override
-    default Seq<VectorX<T>> sliding(int windowSize) {
-        return (Seq<VectorX<T>>) ImmutableList.super.sliding(windowSize);
+    default Seq<Seq<T>> sliding(int windowSize) {
+        return (Seq<Seq<T>>) ImmutableList.super.sliding(windowSize);
+    }
+
+
+    @Override
+    default Seq<Seq<T>> sliding(int windowSize, int increment) {
+        return (Seq<Seq<T>>) ImmutableList.super.sliding(windowSize,increment);
     }
 
     @Override
-    default Seq<VectorX<T>> sliding(int windowSize, int increment) {
-        return (Seq<VectorX<T>>) ImmutableList.super.sliding(windowSize,increment);
-    }
-
-    @Override
-    default <C extends Collection<? super T>> Seq<C> grouped(int size, Supplier<C> supplier) {
+    default <C extends PersistentCollection<? super T>> Seq<C> grouped(int size, Supplier<C> supplier) {
         return (Seq<C>) ImmutableList.super.grouped(size,supplier);
     }
 
     @Override
-    default Seq<ListX<T>> groupedUntil(Predicate<? super T> predicate) {
-        return (Seq<ListX<T>>) ImmutableList.super.groupedUntil(predicate);
+    default Seq<Vector<T>> groupedUntil(Predicate<? super T> predicate) {
+        return (Seq<Vector<T>>) ImmutableList.super.groupedUntil(predicate);
     }
 
     @Override
-    default Seq<ListX<T>> groupedStatefullyUntil(BiPredicate<ListX<? super T>, ? super T> predicate) {
-        return (Seq<ListX<T>>) ImmutableList.super.groupedStatefullyUntil(predicate);
+    default Seq<Vector<T>> groupedUntil(BiPredicate<Vector<? super T>, ? super T> predicate) {
+        return (Seq<Vector<T>>) ImmutableList.super.groupedUntil(predicate);
     }
 
     @Override
@@ -487,23 +498,23 @@ public interface Seq<T> extends ImmutableList<T>,
     }
 
     @Override
-    default Seq<ListX<T>> groupedWhile(Predicate<? super T> predicate) {
-        return (Seq<ListX<T>>) ImmutableList.super.groupedWhile(predicate);
+    default Seq<Vector<T>> groupedWhile(Predicate<? super T> predicate) {
+        return (Seq<Vector<T>>) ImmutableList.super.groupedWhile(predicate);
     }
 
     @Override
-    default <C extends Collection<? super T>> Seq<C> groupedWhile(Predicate<? super T> predicate, Supplier<C> factory) {
+    default <C extends PersistentCollection<? super T>> Seq<C> groupedWhile(Predicate<? super T> predicate, Supplier<C> factory) {
         return (Seq<C>) ImmutableList.super.groupedWhile(predicate,factory);
     }
 
     @Override
-    default <C extends Collection<? super T>> Seq<C> groupedUntil(Predicate<? super T> predicate, Supplier<C> factory) {
+    default <C extends PersistentCollection<? super T>> Seq<C> groupedUntil(Predicate<? super T> predicate, Supplier<C> factory) {
         return (Seq<C>) ImmutableList.super.groupedUntil(predicate,factory);
     }
 
     @Override
-    default Seq<ListX<T>> grouped(int groupSize) {
-        return (Seq<ListX<T>>) ImmutableList.super.grouped(groupSize);
+    default Seq<Vector<T>> grouped(int groupSize) {
+        return (Seq<Vector<T>>) ImmutableList.super.grouped(groupSize);
     }
 
     @Override
@@ -574,6 +585,12 @@ public interface Seq<T> extends ImmutableList<T>,
     @Override
     default Seq<T> skip(long num) {
         return (Seq<T>) ImmutableList.super.skip(num);
+    }
+
+    @Override
+    default Seq<T> tailOrElse(ImmutableList<T> tail) {
+        ImmutableList<T> list = ImmutableList.super.tailOrElse(tail);
+        return Seq.fromIterable(list);
     }
 
     @Override
@@ -670,15 +687,7 @@ public interface Seq<T> extends ImmutableList<T>,
         return (Seq<T>) ImmutableList.super.insertStreamAt(pos,stream);
     }
 
-    @Override
-    default Seq<T> recover(Function<? super Throwable, ? extends T> fn) {
-        return this;
-    }
 
-    @Override
-    default <EX extends Throwable> Seq<T> recover(Class<EX> exceptionClass, Function<? super EX, ? extends T> fn) {
-        return this;
-    }
 
     @Override
     default <U extends Comparable<? super U>> Seq<T> sorted(Function<? super T, ? extends U> function) {
@@ -739,15 +748,6 @@ public interface Seq<T> extends ImmutableList<T>,
         return empty();
     }
 
-    @Override
-    default <R> Seq<R> retry(Function<? super T, ? extends R> fn) {
-        return (Seq<R>) ImmutableList.super.retry(fn);
-    }
-
-    @Override
-    default <R> Seq<R> retry(Function<? super T, ? extends R> fn, int retries, long delay, TimeUnit timeUnit) {
-        return (Seq<R>) ImmutableList.super.retry(fn,retries,delay,timeUnit);
-    }
 
 
   @Override
@@ -788,11 +788,17 @@ public interface Seq<T> extends ImmutableList<T>,
         public final T head;
         public final Seq<T> tail;
         private final int size;
-        private final int hash;
+        private final Supplier<Integer> hash = Memoize.memoizeSupplier(()->{
+            int hashCode = 1;
+            for (T e : this)
+                hashCode = 31*hashCode + (e==null ? 0 : e.hashCode());
+            return hashCode;
+        });
 
         public static <T> Cons<T> cons(T value, Seq<T> tail){
-            return new Cons<>(value,tail,tail.size()+1, 31 * Objects.hashCode(value) + Objects.hashCode(tail));
+            return new Cons<>(value,tail,tail.size()+1);
         }
+
 
         @Override
         public Tuple2<T, ImmutableList<T>> unapply() {
@@ -833,7 +839,7 @@ public interface Seq<T> extends ImmutableList<T>,
           return res.reverse();
         }
         @Override
-        public ImmutableList<T> tail() {
+        public Seq<T> tail() {
             return tail;
         }
         public Seq<T> removeAt(final int i) {
@@ -911,7 +917,7 @@ public interface Seq<T> extends ImmutableList<T>,
         }
         @Override
         public int hashCode() {
-            return hash;
+            return hash.get();
         }
 
         @Override
@@ -938,7 +944,7 @@ public interface Seq<T> extends ImmutableList<T>,
             StringBuffer b = new StringBuffer("["+head);
             Iterator<T> it = tail.iterator();
             while(it.hasNext()){
-                b.append(","+it.next());
+                b.append(", "+it.next());
             }
             b.append("]");
             return b.toString();

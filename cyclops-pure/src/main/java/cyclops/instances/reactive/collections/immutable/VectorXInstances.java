@@ -1,6 +1,9 @@
 package cyclops.instances.reactive.collections.immutable;
 
-import com.oath.cyclops.hkt.DataWitness.vectorX;
+
+import static com.oath.cyclops.data.ReactiveWitness.vectorX;
+
+import com.oath.cyclops.ReactiveConvertableSequence;
 import com.oath.cyclops.hkt.Higher;
 import com.oath.cyclops.types.persistent.PersistentList;
 import cyclops.arrow.Cokleisli;
@@ -284,11 +287,13 @@ public class VectorXInstances {
         VectorX<Either<T, R>> next = VectorX.of(Either.left(initial));
         boolean newValue[] = {false};
         for(;;){
-          next = next.concatMap(e -> e.visit(s -> { newValue[0]=true; return narrowK(fn.apply(s)); }, p -> VectorX.of(e)));
+          next = next.concatMap(e -> e.fold(s -> { newValue[0]=true; return narrowK(fn.apply(s)); }, p -> VectorX.of(e)));
           if(!newValue[0])
             break;
         }
-        return Either.sequenceRight(next).map(l -> l.to().vectorX(LAZY)).orElse(VectorX.empty());
+        return Either.sequenceRight(next).map(l -> l.to(ReactiveConvertableSequence::converter)
+                                                    .vectorX(LAZY))
+                                                    .orElse(VectorX.empty());
 
       }
     };
